@@ -1,6 +1,6 @@
 # Fusion360Voronoi
 
-This script is used for generating voronoi sketches.  Once created, these sketches may then be used for creating or modifying models.
+This script is used for generating voronoi sketches in [Autodesk Fusion 360](http://fusion360.autodesk.com/).  Once created, these sketches may then be used for creating or modifying models.
 
 ![Image of Voronoi Sample]
 (./resources/Voronoi-128-Cells-Copper-sm.png)
@@ -28,6 +28,7 @@ For example, on my Mac the folder is located in:
 
   ![Image of Voronoi Settings](./resources/Voronoi%20Sketch%20Gen%20-%20Settings.png)
 
+  - Edge Style: Straight or Curved edges
   - # Cells : Number of cells created in the sketch
   - Area Width : Width of the area filled with cells
   - Area Height : Height of the area filled with cells
@@ -37,6 +38,8 @@ For example, on my Mac the folder is located in:
 Note that a large number (> 128) of cells may take a while to generate (sometimes several minutes).
 
 Once the voronoi sketch is created I will usually project the geometry onto a surface and then modify from there.  Or I'll use push/pull on the voronoi geometry to modify existing models. The image above was created using this method and a 128 cell voronoi pattern.
+
+Examples posted on my [Fusion 360 project gallery](https://fusion360.autodesk.com/projects/voronoi-script).
 
 ## Issues
 
