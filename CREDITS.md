@@ -1,6 +1,6 @@
 # CREDITS.md
 
-## Portions of this software make use of:
+Portions of this software make use of:
 
 ## Raymond Hill's Javascript-Voronoi code
 
