@@ -7,15 +7,15 @@ This script is used for generating voronoi sketches in [Autodesk Fusion 360](htt
 
 ## Installation
 
-Copy the "Voronoi" folder into your Fusion 360 "My Scripts" folder. You may find this folder using the following steps:
+Copy the "Fusion360Voronoi" folder into your Fusion 360 "My Scripts" folder. You may find this folder using the following steps:
 
-1) Start Fusion 360 and then select the File -> Scripts... menu item
-2) The Scripts Manager dialog will appear and display the "My Scripts" folder and "Sample Scripts" folders
-3) Select one of the "My Scripts" files and then click on the "+" Details icon near the bottom of the dialog.
-  a) If there are no files in the "My Scripts" folder then create a default one.
-  b) Click the Create button, select JavaScript, and then OK.
-5) With the user script selected, click the Full Path "..." button to display a file explorer window that will display the "My Scripts" folder
-6) Copy the Voronoi folder into this location
+1. Start Fusion 360 and then select the File -> Scripts... menu item
+2. The Scripts Manager dialog will appear and display the "My Scripts" folder and "Sample Scripts" folders
+3. Select one of the "My Scripts" files and then click on the "+" Details icon near the bottom of the dialog.
+  a. If there are no files in the "My Scripts" folder then create a default one.
+  b. Click the Create button, select JavaScript, and then OK.
+4. With the user script selected, click the Full Path "..." button to display a file explorer window that will display the "My Scripts" folder
+5. Copy the Voronoi folder into this location
 
 For example, on my Mac the folder is located in:
 
