@@ -87,18 +87,17 @@ https://github.com/gorhill/Javascript-Voronoi
             edgeStyleInput.listItems.add('Curved',true);
             edgeStyleInput.listItems.add('Straight',false);
 
-            // ISSUE: Unit type needs to be specified but I just need a unitless value
-            var countInput = inputs.addRangeCommandIntegerInput('count','# Cells','cm',8,256);
-            countInput.valueOne = 16;
+            // ISSUE: Unit type needs to be specified but I just need a unitless value. For unitless
+            // I'll have to use string input for now.
+            var countInput = inputs.addStringValueInput('count','Number of Cells (2-256)','16');
 
-            var widthInput = inputs.addRangeCommandFloatInput('width','Area Width','cm','1','100');
-            widthInput.valueOne = 15;
+            var initialValW = adsk.core.ValueInput.createByReal(15.0);
+            var widthInput = inputs.addValueInput('width', 'Pattern width', 'cm' , initialValW);
 
-            var heightInput = inputs.addRangeCommandFloatInput('height','Area Height','cm','1','100');
-            heightInput.valueOne = 15;
+            var initialValH = adsk.core.ValueInput.createByReal(15.0);
+            var heightInput = inputs.addValueInput('height', 'Pattern height', 'cm' , initialValH);
 
-            var scaleInput = inputs.addRangeCommandFloatInput('scale','% Scale Cell','cm','10','100');
-            scaleInput.valueOne = 80;
+            var scaleInput = inputs.addStringValueInput('scale','% to scale cells (10-100)','80');
         }
         catch (e) {
             ui.messageBox('Failed to create Voronoi command : ' + (e.description ? e.description : e));
@@ -121,19 +120,19 @@ https://github.com/gorhill/Javascript-Voronoi
             for (var n = 0; n < inputs.count; n++) {
                 var input = inputs.item(n);
                 if (input.id === 'width') {
-                    widthInput = adsk.core.RangeCommandFloatInput(input);
+                    widthInput = adsk.core.ValueCommandInput(input);
                 }
                 else if (input.id === 'height') {
-                    heightInput = adsk.core.RangeCommandFloatInput(input);
+                    heightInput = adsk.core.ValueCommandInput(input);
                 }
                 else if (input.id === 'count') {
-                    countInput = adsk.core.RangeCommandIntegerInput(input);
+                    countInput = adsk.core.StringValueCommandInput(input);
                 }
                 else if (input.id === 'edgeStyle') {
                     edgeStyleInput = adsk.core.DropDownCommandInput(input);
                 }
                 else if (input.id === 'scale') {
-                    scaleInput = adsk.core.RangeCommandFloatInput(input);
+                    scaleInput = adsk.core.StringValueCommandInput(input);
                 }
             }
 
@@ -148,7 +147,7 @@ https://github.com/gorhill/Javascript-Voronoi
                 count: 16,
                 width: 10,
                 height: 10,
-                scale: 90,
+                scale: 80,
                 margin: 0
             };
 
@@ -158,25 +157,31 @@ https://github.com/gorhill/Javascript-Voronoi
                 return;
             }
 
-            params.count = unitsMgr.evaluateExpression(countInput.expressionOne, "cm");    // ISSUE: Unitless needed
-            if (params.count < 8 || params.count > 256) {
-                ui.messageBox("Invalid cell count: must be 16 to 256");
+            if (countInput.value !== '') {
+                params.count = parseInt(countInput.value);
+            }
+
+            if (params.count < 2 || params.count > 256) {
+                ui.messageBox("Invalid cell count: must be 2 to 256");
                 return;
             }
 
-            params.width = unitsMgr.evaluateExpression(widthInput.expressionOne, "cm");
+            params.width = unitsMgr.evaluateExpression(widthInput.expression, "cm");
             if (params.width <= 0.0) {
                 ui.messageBox("Invalid width: must be > 0");
                 return;
             }
 
-            params.height = unitsMgr.evaluateExpression(heightInput.expressionOne, "cm");
+            params.height = unitsMgr.evaluateExpression(heightInput.expression, "cm");
             if (params.height <= 0.0) {
                 ui.messageBox("Invalid height: must be > 0");
                 return;
             }
 
-            params.scale = unitsMgr.evaluateExpression(scaleInput.expressionOne, "cm");
+            if (scaleInput.value !== '') {
+                params.scale = parseInt(scaleInput.value);
+            }
+
             if (params.scale < 10 || params.scale > 100) {
                 ui.messageBox("Invalid cell scale: must be 10 to 100");
                 return;
