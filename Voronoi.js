@@ -233,6 +233,7 @@ https://github.com/gorhill/Javascript-Voronoi
         var root = design.rootComponent;
         var sketch = root.sketches.add(root.xYConstructionPlane);
         sketch.name = "Voronoi - " + sketch.name;
+        sketch.isComputeDeferred = true;
 
         // Create each of the voronoi cells...
     	var cells = diagram.cells;
@@ -257,6 +258,7 @@ https://github.com/gorhill/Javascript-Voronoi
 				createCellPath(sketch, pts, edgeStyle, scale);
 			}
 		}
+	        sketch.isComputeDeferred = false;		
 	}
 
 	function createCellPath(sketch, points, edgeStyle, scale, width, height) {
