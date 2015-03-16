@@ -31,15 +31,15 @@ For example, on my Mac the folder is located in:
   ![Image of Voronoi Settings](./resources/Voronoi%20Sketch%20Gen%20-%20Settings.png)
 
   - Edge Style: Straight or Curved edges
-  - # Cells : Number of cells created in the sketch
-  - Area Width : Width of the area filled with cells
-  - Area Height : Height of the area filled with cells
-  - % Scale Cell : Percentage to scale down each of the cells from default (~80%)
+  - Number of Cells (2-256) : Number of cells created in the sketch
+  - Pattern width : Width of the area filled with cells
+  - Pattern height : Height of the area filled with cells
+  - % to scale cells (10-100) : Percentage to scale down each of the cells
 3. Click OK to generate the sketch
 
 Note that a large number (> 128) of cells may take a while to generate (sometimes several minutes).
 
-Once the voronoi sketch is created I will usually project the geometry onto a surface and then modify from there.  Or I'll use push/pull on the voronoi geometry to modify existing models. The image above was created using this method and a 128 cell voronoi pattern.
+Once the voronoi sketch is created I will usually project the geometry onto a surface and then modify from there. Note that projecting onto a curved surface will not work at this time. In this case I'll use push/pull on the voronoi geometry to modify existing models. The image above was created using this method and a 128 cell voronoi pattern.
 
 Examples posted on my [Fusion 360 project gallery](https://fusion360.autodesk.com/projects/voronoi-script).
 
