@@ -2,9 +2,9 @@
 
 This script is used for generating voronoi sketches in [Autodesk Fusion 360](http://fusion360.autodesk.com/).  Once created, these sketches may then be used for creating or modifying models.
 
-![Image of Voronoi 256 Cell Sample](./resources/Voronoi-256-Cells-Brass-sm.png) ![Image of Voronoi 128 Cell Sample](./resources/Voronoi-128-Cells-Copper-sm.png)
+<span align='center'><img alt='Image of Voronoi Table' src='./resources/Voronoi_Table_sm.png' /></span>
 
-Voronoi_Table_sm.png
+<span align='center'><img alt='Image of Voronoi 256 Cell Sample' src='./resources/Voronoi-256-Cells-Brass-sm.png' /> <img alt='Image of Voronoi 128 Cell Sample' src='./resources/Voronoi-128-Cells-Copper-sm.png' /></span>
 
 ## Installation
 
