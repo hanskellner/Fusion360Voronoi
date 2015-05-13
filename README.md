@@ -4,7 +4,7 @@ This script is used for generating voronoi sketches in [Autodesk Fusion 360](htt
 
 <span align='center'><img alt='Image of Voronoi Table' src='./resources/Voronoi_Table_sm.png' /></span>
 
-<span align='center'><img alt='Image of Voronoi 256 Cell Sample' src='./resources/Voronoi-256-Cells-Brass-sm.png' /> <img alt='Image of Voronoi 128 Cell Sample' src='./resources/Voronoi-128-Cells-Copper-sm.png' /></span>
+<span align='center'><img alt='Image of Voronoi 128 Cell Sample' src='./resources/Voronoi-128-Cells-Copper-sm.png' /></span>
 
 ## Installation
 
@@ -45,12 +45,17 @@ Note that a large number (> 128) of cells may take a while to generate (sometime
 
 Once the voronoi sketch is created I will usually project the geometry onto a surface and then modify from there. Note that projecting onto a curved surface will not work at this time. In this case I'll use push/pull on the voronoi geometry to modify existing models. The image above was created using this method and a 128 cell voronoi pattern.
 
+## Examples
+
 Examples posted on my [Fusion 360 project gallery](https://fusion360.autodesk.com/projects/voronoi-script).
+
+<span align='center'><img alt='Image of Voronoi 256 Cell Sample' src='./resources/Voronoi-16x4-Cells-Walnut-sm.png' /></span>
+
+<span align='center'><img alt='Image of Voronoi 256 Cell Sample' src='./resources/Voronoi-256-Cells-Brass-sm.png' /></span>
 
 ## Issues
 
 - One cell may not be filled after generation.  Adjusting a control point then forces it to fill.
-- Large cell counts may cause a long generation time.
 - It's not possible to adjust the spline's knots and strengths therefore the curves don't conform as close as they should.  The "% Scale Cell" value is a workaround for this.  Scaling down the cells reduces the possible overlap of the cells.
 
 ## Credits
