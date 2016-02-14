@@ -31,7 +31,7 @@ https://github.com/gorhill/Javascript-Voronoi
 */
 
 /*globals adsk*/
-(function () {
+function run(context) {
 
     "use strict";
 
@@ -434,4 +434,4 @@ https://github.com/gorhill/Javascript-Voronoi
 
         adsk.terminate();
     }
-}());
+}
