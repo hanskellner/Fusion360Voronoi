@@ -2,30 +2,21 @@
 
 This script is used for generating voronoi sketches in [Autodesk Fusion 360](http://fusion360.autodesk.com/).  Once created, these sketches may then be used for creating or modifying models.
 
+<em>NOTE: Fusion 360 has now removed the ability to create new JavaScript scripts/addins.  But you can still add and run existing scripts such as Fusion360Voronoi.  See this post:</em>
+
+https://forums.autodesk.com/t5/fusion-360-api-and-scripts/image-2-surface-script-for-fusion-360/m-p/7324273#M4403
+
 <span align='center'><img alt='Image of Voronoi Table' src='./resources/Voronoi_Table_sm.png' /></span>
 
 <span align='center'><img alt='Image of Voronoi 128 Cell Sample' src='./resources/Voronoi-128-Cells-Copper-sm.png' /></span>
 
 ## Installation
 
-Copy the "Fusion360Voronoi" folder into your Fusion 360 "My Scripts" folder. You may find this folder using the following steps:
+Please follow the instructions here:
 
-1. Start Fusion 360 and then select the File -> "Scripts and Add-Ins..." menu item
-2. The Scripts and Add-Ins dialog will appear and display the "My Scripts" and "Sample Scripts" folders
-3. Select one of the "My Scripts" files and then click on the "+" Details icon near the bottom of the dialog.
-  - If there are no files in the "My Scripts" folder then create a default one by clicking the Create button, select JavaScript, and then OK.
-4. With a user script selected and the "Details" section expanded, look at the Full Path value.  This contains the location of the user scripts folder.
-5. Copy this script's folder into that location.
-  For example, on my Mac the folder is located in:
-    /Users/USERNAME/Library/Application Support/Autodesk/Autodesk Fusion 360/API/Scripts
-  And on Windows:
-    C:\users\USERNAME\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\Scripts
-6. Now add the script to the lists of "My Scripts"
-7. Click the "+" icon next to the "my Scripts" item
-  - The "Add new script" dialog should appear.
-8. Locate the Voronoi.js file in the folder you copied, select it, and click Open. The script should now be installed and ready to be run.
+https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcarticles/sfdcarticles/How-to-install-an-ADD-IN-and-Script-in-Fusion-360.html
 
-The script should be ready to run.
+Note, you can still add scripts implemented in JavaScript.
 
 ## Usage
 
