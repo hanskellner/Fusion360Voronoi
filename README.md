@@ -2,7 +2,11 @@
 
 This script is used for generating voronoi sketches in [Autodesk Fusion 360](http://fusion360.autodesk.com/).  Once created, these sketches may then be used for creating or modifying models.
 
-<em>NOTE: Fusion 360 has now removed the ability to create new JavaScript scripts/addins.  But you can still add and run existing scripts such as Fusion360Voronoi.  See this post:</em>
+## JavaScript Add-In Support in Fusion 360
+
+Note that JavaScript development (editing/debugging) is no longer supported within Fusion 360. But existing JavaScript add-ins, such as *Voronoi* can still be installed and run.
+
+More information here:
 
 https://forums.autodesk.com/t5/fusion-360-api-and-scripts/image-2-surface-script-for-fusion-360/m-p/7324273#M4403
 
