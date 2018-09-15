@@ -9,21 +9,6 @@ MIT License: See https://github.com/hanskellner/Fusion360Voronoi/LICENSE.md
 /*
 This is a script for Autodesk Fusion 360 that generates Voronoi sketches.
 
-Installation:
-
-Copy the "Voronoi" fodler into your Fusion 360 "My Scripts" folder. You may find this folder using the following steps:
-
-1) Start Fusion 360 and then select the File -> Scripts... menu item
-2) The Scripts Manager dialog will appear and display the "My Scripts" folder and "Sample Scripts" folders
-3) Select one of the "My Scripts" files and then click on the "+" Details icon near the bottom of the dialog.
-  a) If there are no files in the "My Scripts" folder then create a default one.
-  b) Click the Create button, select JavaScript, and then OK.
-5) With the user script selected, click the Full Path "..." button to display a file explorer window that will display the "My Scripts" folder
-6) Copy the files into the folder
-
-For example, on a Mac the folder is located in:
-/Users/USERNAME/Library/Application Support/Autodesk/Autodesk Fusion 360/API/Scripts
-
 Credits:
 
 This code makes use of the Raymond Hill's well done Javascript-Voronoi code:
@@ -31,8 +16,54 @@ https://github.com/gorhill/Javascript-Voronoi
 */
 
 /*globals adsk*/
-function run(context) {
 
+var commandId = 'VoronoiSketchGenerator';
+var workspaceToUse = 'FusionSolidEnvironment';
+var panelToUse = 'SolidCreatePanel';
+
+var errorDescription = function(e) {
+    return (e.description ? e.description : e);
+};
+
+var commandDefinitionById = function(id) {
+    var app = adsk.core.Application.get();
+    var ui = app.userInterface;
+    if (!id) {
+        ui.messageBox('commandDefinition id is not specified');
+        return null;
+    }
+    var commandDefinitions_ = ui.commandDefinitions;
+    var commandDefinition_ = commandDefinitions_.itemById(id);
+    return commandDefinition_;
+};
+
+var commandControlById = function(id) {
+    var app = adsk.core.Application.get();
+    var ui = app.userInterface;
+    if (!id) {
+        ui.messageBox('commandControl id is not specified');
+        return null;
+    }
+    var workspaces_ = ui.workspaces;
+    var modelingWorkspace_ = workspaces_.itemById(workspaceToUse);
+    var toolbarPanels_ = modelingWorkspace_.toolbarPanels;
+    var toolbarPanel_ = toolbarPanels_.itemById(panelToUse); 
+    var toolbarControls_ = toolbarPanel_.controls;
+    var toolbarControl_ = toolbarControls_.itemById(id);
+    return toolbarControl_;
+};
+
+var destroyObject = function(uiObj, tobeDeleteObj) {
+    if (uiObj && tobeDeleteObj) {
+        if (tobeDeleteObj.isValid) {
+            tobeDeleteObj.deleteMe();
+        } else {
+            uiObj.messageBox('tobeDeleteObj is not a valid object');
+        }
+    }
+};
+
+function run(context) {
     "use strict";
 
     if (adsk.debug === true) {
@@ -47,25 +78,67 @@ function run(context) {
     if (app) {
         ui = app.userInterface;
     }
+const getArea = (cell) => cell.halfedges.reduceRight((area, halfedge) => {
+    const p1 = halfedge.getStartpoint()
+    const p2 = halfedge.getEndpoint()
+    area += p1.x * p2.y
+    area -= p1.y * p2.x
+    return area
+}, 0)/2
 
-	var design = adsk.fusion.Design(app.activeProduct);
-	if (!design) {
-		ui.messageBox('No active design', appTitle);
-		adsk.terminate();
-		return;
-	}
+const getCentroid = (cell) => {
+    const area = getArea(cell) * 6
+    const {x, y} = cell.halfedges.reduceRight(({x, y}, halfedge) => {
+        const p1 = halfedge.getStartpoint()
+        const p2 = halfedge.getEndpoint()
+        const v = p1.x * p2.y - p2.x * p1.y
+        x += (p1.x + p2.x) * v
+        y += (p1.y + p2.y) * v
+        return {x, y}
+    }, {x:0, y:0})
+    return {x: x/area, y: y/area}
+}
+
+const getDistance = (a, b) => Math.sqrt(Math.pow(a.x-b.x, 2)+Math.pow(a.y-b.y, 2))
+
+const relax = (diagram) => {
+    let again = false
+    const p = 1 / diagram.cells.length * 0.1
+    return diagram.cells.reduce((sites, cell) => {
+        const rn = Math.random() // :(
+        if(rn < p) { return sites }
+        const site = getCentroid(cell)
+        let dist = getDistance(site, cell.site)
+        again = again || dist > 1
+        // don't relax too fast
+        if (dist > 2) {
+            site.x = (site.x+cell.site.x)/2;
+            site.y = (site.y+cell.site.y)/2;
+        }
+        // probability of mytosis
+        if (rn > (1-p)) {
+            dist /= 2;
+            sites.push({
+                x: site.x+(site.x-cell.site.x)/dist,
+                y: site.y+(site.y-cell.site.y)/dist,
+            });
+        }
+        sites.push(site)
+        return sites
+    }, [])
+}
 
     // Create the command definition.
     var createCommandDefinition = function() {
         var commandDefinitions = ui.commandDefinitions;
 
         // Be fault tolerant in case the command is already added...
-        var cmDef = commandDefinitions.itemById('VoronoiSketchGenerator');
+        var cmDef = commandDefinitions.itemById(commandId);
         if (!cmDef) {
-            cmDef = commandDefinitions.addButtonDefinition('VoronoiSketchGenerator',
+            cmDef = commandDefinitions.addButtonDefinition(commandId,
                     'Voronoi Sketch Generator',
-                    'Generates a Voronoi sketch.',
-                    './resources'); // relative resource file path is specified
+                    'Generates a Voronoi sketch\n',
+                    './resources/command'); // relative resource file path is specified
         }
         return cmDef;
     };
@@ -77,25 +150,23 @@ function run(context) {
             var command = args.command;
             command.execute.add(onCommandExecuted);
 
-            // Terminate the script when the command is destroyed
-            command.destroy.add(function () { adsk.terminate(); });
-
             // Define the inputs.
             var inputs = command.commandInputs;
 
             var edgeStyleInput = inputs.addDropDownCommandInput('edgeStyle', 'Edge Style', adsk.core.DropDownStyles.TextListDropDownStyle );
-            edgeStyleInput.listItems.add('Curved',true);
-            edgeStyleInput.listItems.add('Straight',false);
+            edgeStyleInput.listItems.add('Curved', false);
+            edgeStyleInput.listItems.add('Straight', true);
 
             // ISSUE: Unit type needs to be specified but I just need a unitless value. For unitless
             // I'll have to use string input for now.
             var countInput = inputs.addStringValueInput('count','Number of Cells (2-256)','16');
+            var relaxInput = inputs.addStringValueInput('relax','Number of Lloyd\'s relax iterations #relax ^_^','10');
 
             var initialValW = adsk.core.ValueInput.createByReal(15.0);
-            var widthInput = inputs.addValueInput('width', 'Pattern width', 'cm' , initialValW);
+            var widthInput = inputs.addValueInput('width', 'Pattern width', 'mm' , initialValW);
 
             var initialValH = adsk.core.ValueInput.createByReal(15.0);
-            var heightInput = inputs.addValueInput('height', 'Pattern height', 'cm' , initialValH);
+            var heightInput = inputs.addValueInput('height', 'Pattern height', 'mm' , initialValH);
 
             var scaleInput = inputs.addStringValueInput('scale','% to scale cells (10-100)','80');
         }
@@ -107,13 +178,18 @@ function run(context) {
     // CommandExecuted event handler.
     var onCommandExecuted = function(args) {
         try {
+            var design = app.activeProduct;
+            if (!design) {
+                ui.messageBox('No active design', appTitle);
+                adsk.terminate();
+                return;
+            }
 
             // Extract input values
             var unitsMgr = app.activeProduct.unitsManager;
             var command = adsk.core.Command(args.firingEvent.sender);
             var inputs = command.commandInputs;
-
-            var edgeStyleInput, countInput, widthInput, heightInput, scaleInput;
+            let widthInput, heightInput, countInput, edgeStyleInput, scaleInput, relaxInput;
 
             // REVIEW: Problem with a problem - the inputs are empty at this point. We
             // need access to the inputs within a command during the execute.
@@ -134,9 +210,12 @@ function run(context) {
                 else if (input.id === 'scale') {
                     scaleInput = adsk.core.StringValueCommandInput(input);
                 }
+                else if (input.id === 'relax') {
+                    relaxInput = adsk.core.StringValueCommandInput(input);
+                }
             }
 
-            if (!edgeStyleInput || !countInput || !widthInput || !heightInput || !scaleInput) {
+            if (!edgeStyleInput || !countInput || !widthInput || !heightInput || !scaleInput || !relaxInput) {
                 ui.messageBox("One of the inputs does not exist.");
                 return;
             }
@@ -148,8 +227,10 @@ function run(context) {
                 width: 10,
                 height: 10,
                 scale: 80,
-                margin: 0
+                margin: 0,
+                relax: 0
             };
+            params.relax = parseInt(relaxInput.value, 10)
 
             params.edgeStyle = edgeStyleInput.selectedItem.index;
             if (params.edgeStyle < 0 || params.edgeStyle > 1) {
@@ -229,7 +310,10 @@ function run(context) {
             return false;
         }
 
+        while(params.relax--)
+            diagram = voronoi.compute(relax(diagram), bbox)
         // Create a sketch on the XY plane to hold the voronoi
+        var design = app.activeProduct;
         var root = design.rootComponent;
         var sketch = root.sketches.add(root.xYConstructionPlane);
         sketch.name = "Voronoi - " + sketch.name;
@@ -258,7 +342,13 @@ function run(context) {
 				createCellPath(sketch, pts, edgeStyle, scale);
 			}
 		}
-	        sketch.isComputeDeferred = false;		
+        
+        // Create a rectangle around the shape
+        sketch.sketchCurves.sketchLines.addTwoPointRectangle(
+            adsk.core.Point3D.create(0, 0, 0),
+            adsk.core.Point3D.create(width, height, 0));
+
+        sketch.isComputeDeferred = false;
 	}
 
 	function createCellPath(sketch, points, edgeStyle, scale, width, height) {
@@ -419,13 +509,22 @@ function run(context) {
 
     // Start of the script...
 	try {
-
         // Create and run command
-        var command = createCommandDefinition();
-        var commandCreatedEvent = command.commandCreated;
+        var commandDef = createCommandDefinition();
+        var commandCreatedEvent = commandDef.commandCreated;
         commandCreatedEvent.add(onCommandCreated);
 
-        command.execute();
+        // add a command on Sketch panel in modeling workspace
+        var workspaces_ = ui.workspaces;
+        var modelingWorkspace_ = workspaces_.itemById(workspaceToUse);
+        var toolbarPanels_ = modelingWorkspace_.toolbarPanels;
+        var toolbarPanel_ = toolbarPanels_.itemById(panelToUse); // add the new command under the fourth panel
+        var toolbarControls_ = toolbarPanel_.controls;
+        var toolbarControl_ = toolbarControls_.itemById(commandId);
+        if (!toolbarControl_) {
+            toolbarControl_ = toolbarControls_.addCommand(commandDef, '');
+            toolbarControl_.isVisible = true;
+        }
     }
     catch (e) {
         if (ui) {
@@ -433,5 +532,32 @@ function run(context) {
         }
 
         adsk.terminate();
+    }
+}
+
+function stop(context) {
+    var ui;
+    try {
+        var app = adsk.core.Application.get();
+        ui = app.userInterface;
+        var objArray = [];
+
+        var commandControl_ = commandControlById(commandId);
+        if (commandControl_) {
+            objArray.push(commandControl_);
+        }
+        var commandDefinition_ = commandDefinitionById(commandId);
+        if (commandDefinition_) {
+            objArray.push(commandDefinition_);
+        }
+
+        objArray.forEach(function(obj){
+            destroyObject(ui, obj);
+        });
+
+    } catch (e) {
+        if (ui) {
+            ui.messageBox('AddIn Stop Failed : ' + errorDescription(e));
+        }
     }
 }
