@@ -1,0 +1,13 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"script",
+	"id":   "82466634-9f7a-44a0-951c-f030c2cd482a",
+	"author":	"Hans Kellner",
+	"description":	{
+		"":	"This is an Autodesk Fusion 360 script that's used for generating voronoi sketches."
+	},
+	"version":	"1.0",
+	"runOnStartup":	false,
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}
