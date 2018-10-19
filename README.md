@@ -29,8 +29,10 @@ Note, you can still add scripts implemented in JavaScript.
 
   ![Image of Voronoi Settings](./resources/Voronoi%20Sketch%20Gen%20-%20Settings.png)
 
+  - Sketch Selection: Select a sketch to insert Voronoi or none to create a sketch.
   - Edge Style: Straight or Curved edges
   - Number of Cells (2-256) : Number of cells created in the sketch
+  - Number of Lloyd's relax iterations: 
   - Pattern width : Width of the area filled with cells
   - Pattern height : Height of the area filled with cells
   - % to scale cells (10-100) : Percentage to scale down each of the cells
@@ -57,3 +59,7 @@ Examples posted on my [Fusion 360 project gallery](https://fusion360.autodesk.co
 
 This code makes use of the Raymond Hill's well done Javascript-Voronoi code:
 https://github.com/gorhill/Javascript-Voronoi
+
+### Lloyd's Relaxation Support
+
+Github user [LeonFedotov](https://github.com/LeonFedotov) kindly submitted the changes to support Lloyd's relaxation algorithm.  More information about the algorithm on [Wikipedia](https://en.wikipedia.org/wiki/Lloyd%27s_algorithm).

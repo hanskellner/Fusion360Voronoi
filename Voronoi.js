@@ -37,6 +37,24 @@ var commandDefinitionById = function(id) {
     return commandDefinition_;
 };
 
+var getToolbarControls = function() {
+    var toolbarControls_ = null;
+
+    var app = adsk.core.Application.get();
+    var ui = app.userInterface;
+    var workspaces_ = ui.workspaces;
+    var modelingWorkspace_ = workspaces_.itemById(workspaceToUse);
+    if (modelingWorkspace_) {
+        var toolbarPanels_ = modelingWorkspace_.toolbarPanels;
+        var toolbarPanel_ = toolbarPanels_.itemById(panelToUse); 
+        if (toolbarPanel_) {
+            toolbarControls_ = toolbarPanel_.controls;
+        }
+    }
+
+    return toolbarControls_;
+};
+
 var commandControlById = function(id) {
     var app = adsk.core.Application.get();
     var ui = app.userInterface;
@@ -44,11 +62,13 @@ var commandControlById = function(id) {
         ui.messageBox('commandControl id is not specified');
         return null;
     }
-    var workspaces_ = ui.workspaces;
-    var modelingWorkspace_ = workspaces_.itemById(workspaceToUse);
-    var toolbarPanels_ = modelingWorkspace_.toolbarPanels;
-    var toolbarPanel_ = toolbarPanels_.itemById(panelToUse); 
-    var toolbarControls_ = toolbarPanel_.controls;
+    
+    var toolbarControls_ = getToolbarControls();
+    if (!toolbarControls_) {
+        ui.messageBox('Unable to find Toolbar Controls for "' + workspaceToUse + '.' + panelToUse + '"');
+        return null;
+    }
+
     var toolbarControl_ = toolbarControls_.itemById(id);
     return toolbarControl_;
 };
@@ -133,14 +153,15 @@ const relax = (diagram) => {
         var commandDefinitions = ui.commandDefinitions;
 
         // Be fault tolerant in case the command is already added...
-        var cmDef = commandDefinitions.itemById(commandId);
-        if (!cmDef) {
-            cmDef = commandDefinitions.addButtonDefinition(commandId,
+        var cmdDef = commandDefinitions.itemById(commandId);
+        if (!cmdDef) {
+            cmdDef = commandDefinitions.addButtonDefinition(commandId,
                     'Voronoi Sketch Generator',
                     'Generates a Voronoi sketch\n',
-                    './resources/command'); // relative resource file path is specified
+                    './resources'); // relative resource file path is specified
+            cmdDef.toolClipFilename = './resources/Voronoi-tooltip.png';
         }
-        return cmDef;
+        return cmdDef;
     };
 
     // CommandCreated event handler.
@@ -153,6 +174,10 @@ const relax = (diagram) => {
             // Define the inputs.
             var inputs = command.commandInputs;
 
+            var selectionInput = inputs.addSelectionInput('sketchSelection', 'Sketch Selection', 'Select a sketch to place the Voronoi');
+            selectionInput.addSelectionFilter('Sketches');  // Select sketches only
+            selectionInput.setSelectionLimits(0,1);         // None or 1 sketch
+
             var edgeStyleInput = inputs.addDropDownCommandInput('edgeStyle', 'Edge Style', adsk.core.DropDownStyles.TextListDropDownStyle );
             edgeStyleInput.listItems.add('Curved', false);
             edgeStyleInput.listItems.add('Straight', true);
@@ -160,7 +185,7 @@ const relax = (diagram) => {
             // ISSUE: Unit type needs to be specified but I just need a unitless value. For unitless
             // I'll have to use string input for now.
             var countInput = inputs.addStringValueInput('count','Number of Cells (2-256)','16');
-            var relaxInput = inputs.addStringValueInput('relax','Number of Lloyd\'s relax iterations #relax ^_^','10');
+            var relaxInput = inputs.addStringValueInput('relax','Number of Lloyd\'s relax iterations','10');
 
             var initialValW = adsk.core.ValueInput.createByReal(15.0);
             var widthInput = inputs.addValueInput('width', 'Pattern width', 'mm' , initialValW);
@@ -189,13 +214,16 @@ const relax = (diagram) => {
             var unitsMgr = app.activeProduct.unitsManager;
             var command = adsk.core.Command(args.firingEvent.sender);
             var inputs = command.commandInputs;
-            let widthInput, heightInput, countInput, edgeStyleInput, scaleInput, relaxInput;
+            let sketchSelectionInput, widthInput, heightInput, countInput, edgeStyleInput, scaleInput, relaxInput;
 
             // REVIEW: Problem with a problem - the inputs are empty at this point. We
             // need access to the inputs within a command during the execute.
             for (var n = 0; n < inputs.count; n++) {
                 var input = inputs.item(n);
-                if (input.id === 'width') {
+                if (input.id === 'sketchSelection') {
+                    sketchSelectionInput = adsk.core.SelectionCommandInput(input);
+                }
+                else if (input.id === 'width') {
                     widthInput = adsk.core.ValueCommandInput(input);
                 }
                 else if (input.id === 'height') {
@@ -215,7 +243,7 @@ const relax = (diagram) => {
                 }
             }
 
-            if (!edgeStyleInput || !countInput || !widthInput || !heightInput || !scaleInput || !relaxInput) {
+            if (!sketchSelectionInput || !edgeStyleInput || !countInput || !widthInput || !heightInput || !scaleInput || !relaxInput) {
                 ui.messageBox("One of the inputs does not exist.");
                 return;
             }
@@ -228,8 +256,19 @@ const relax = (diagram) => {
                 height: 10,
                 scale: 80,
                 margin: 0,
-                relax: 0
+                relax: 0,
+                selectedSketch: null
             };
+
+            // Get the selected body
+            if (sketchSelectionInput.selectionCount == 1) {
+                params.selectedSketch = sketchSelectionInput.selection(0).entity;
+                if (!params.selectedSketch) {
+                    ui.messageBox("Failed to get the selected sketch.");
+                    return;
+                }
+            }
+
             params.relax = parseInt(relaxInput.value, 10)
 
             params.edgeStyle = edgeStyleInput.selectedItem.index;
@@ -284,6 +323,7 @@ const relax = (diagram) => {
         var height = params["height"];
         var scale = params["scale"] / 100.0;  // convert from %
         var margin = params["margin"];
+        var theSketch = params["selectedSketch"];
 
 		var bbox = {
 			xl: margin,
@@ -311,13 +351,17 @@ const relax = (diagram) => {
         }
 
         while(params.relax--)
-            diagram = voronoi.compute(relax(diagram), bbox)
-        // Create a sketch on the XY plane to hold the voronoi
-        var design = app.activeProduct;
-        var root = design.rootComponent;
-        var sketch = root.sketches.add(root.xYConstructionPlane);
-        sketch.name = "Voronoi - " + sketch.name;
-        sketch.isComputeDeferred = true;
+            diagram = voronoi.compute(relax(diagram), bbox);
+
+        // If a sketch wasn't selected then create a sketch on the XY plane to hold the voronoi.
+        if (!theSketch) {
+            var design = app.activeProduct;
+            var root = design.rootComponent;
+            theSketch = root.sketches.add(root.xYConstructionPlane);
+            theSketch.name = "Voronoi - " + theSketch.name;
+        }
+
+        theSketch.isComputeDeferred = true;
 
         // Create each of the voronoi cells...
     	var cells = diagram.cells;
@@ -339,16 +383,16 @@ const relax = (diagram) => {
         			pts.push(halfEdge.getStartpoint());
         		}
 
-				createCellPath(sketch, pts, edgeStyle, scale);
+				createCellPath(theSketch, pts, edgeStyle, scale);
 			}
 		}
         
         // Create a rectangle around the shape
-        sketch.sketchCurves.sketchLines.addTwoPointRectangle(
+        theSketch.sketchCurves.sketchLines.addTwoPointRectangle(
             adsk.core.Point3D.create(0, 0, 0),
             adsk.core.Point3D.create(width, height, 0));
 
-        sketch.isComputeDeferred = false;
+        theSketch.isComputeDeferred = false;
 	}
 
 	function createCellPath(sketch, points, edgeStyle, scale, width, height) {
@@ -515,11 +559,11 @@ const relax = (diagram) => {
         commandCreatedEvent.add(onCommandCreated);
 
         // add a command on Sketch panel in modeling workspace
-        var workspaces_ = ui.workspaces;
-        var modelingWorkspace_ = workspaces_.itemById(workspaceToUse);
-        var toolbarPanels_ = modelingWorkspace_.toolbarPanels;
-        var toolbarPanel_ = toolbarPanels_.itemById(panelToUse); // add the new command under the fourth panel
-        var toolbarControls_ = toolbarPanel_.controls;
+        var toolbarControls_ = getToolbarControls();
+        if (!toolbarControls_) {
+            throw 'Unable to find Toolbar Controls for "' + workspaceToUse + '.' + panelToUse + '"';
+        }
+    
         var toolbarControl_ = toolbarControls_.itemById(commandId);
         if (!toolbarControl_) {
             toolbarControl_ = toolbarControls_.addCommand(commandDef, '');
