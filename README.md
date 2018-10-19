@@ -44,6 +44,10 @@ Note that a large number (> 128) of cells may take a while to generate (sometime
 
 Once the voronoi sketch is created I will usually project the geometry onto a surface and then modify from there. Note that projecting onto a curved surface will not work at this time. In this case I'll use push/pull on the voronoi geometry to modify existing models. The image above was created using this method and a 128 cell voronoi pattern.
 
+## Video Screencast 
+
+Please view the following screencast to see Voronoi in use: [Using the Voronoi v2 add-in for Fusion 360](https://autode.sk/2S2jpR5)
+
 ## Examples
 
 Examples posted on my [Fusion 360 project gallery](https://fusion360.autodesk.com/projects/voronoi-script).
