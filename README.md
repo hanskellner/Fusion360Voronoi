@@ -1,5 +1,7 @@
 # ![Fusion360Voronoi](./resources/32x32.png) Fusion360Voronoi
 
+[Fusion 360 Voronoi](./resources/Voronoi-tooltip.png)
+
 This script is used for generating voronoi sketches in [Autodesk Fusion 360](http://fusion360.autodesk.com/).  Once created, these sketches may then be used for creating or modifying models.
 
 ## JavaScript Add-In Support in Fusion 360
