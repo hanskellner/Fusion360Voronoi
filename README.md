@@ -15,7 +15,7 @@ https://forums.autodesk.com/t5/fusion-360-api-and-scripts/image-2-surface-script
 <span align='center'><img alt='Image of Voronoi Table' src='./resources/Voronoi_Table_sm.png' /></span>
 
 <span align='center'><img alt='Image of Voronoi 128 Cell Sample' src='./resources/Voronoi-128-Cells-Copper-sm.png' /></span>
-
+<span align='center'><img alt="Image of printed boxes with Voronoi 100 Cell Sample with 10 iterations of loyds relaxation vs 0" src="https://user-images.githubusercontent.com/130342/45584046-724d1800-b8d5-11e8-9704-364de04b2ef0.jpg"/></span>
 ## Installation
 
 Please follow the instructions here:
