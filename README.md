@@ -47,18 +47,18 @@ https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcartic
 
 ## Settings
 
-  - Width, Height
-    These set the width and height that bound the result.  These values use the units specified in the initial dialog (inches or centimeters).
-  - Cell Style
-    This dropdown is used to define how the cells are rendered.  The first two, Curves and Straight, create the two most common style of voronoi patterns.  The remaining options are symbols.  Selecting a symbol will cause one to be inserted at the centroid of each cell and scaled to fit within the cell.  Note that the scaling is not perfect at the moment.  The rotation of each symbol is also set to a random value.
-  - Cell Count
-    This sets the number of cells.  Note that a large number (> 100) of cells may take a while to generate (sometimes several minutes).
-  - Cell Scale
-    This scales the cells and is useful to add a margin between cells or prevent overlap for symbols.
-  - Draw Border
-    Toggle the drawing of the bounds/border.
-  - Zoom Amount
-    This is used to zoom the view in/out.  It does not effect the result inserted into the sketch.  It's useful for when your palette window is too small and obscures some of the diagram.
+  - **Width, Height**
+      These set the width and height that bound the result.  These values use the units specified in the initial dialog (inches or centimeters).
+  - **Cell Style**
+      This dropdown is used to define how the cells are rendered.  The first two, Curves and Straight, create the two most common style of voronoi patterns.  The remaining options are symbols.  Selecting a symbol will cause one to be inserted at the centroid of each cell and scaled to fit within the cell.  Note that the scaling is not perfect at the moment.  The rotation of each symbol is also set to a random value.
+  - **Cell Count**
+      This sets the number of cells.  Note that a large number (> 100) of cells may take a while to generate (sometimes several minutes).
+  - **Cell Scale**
+      This scales the cells and is useful to add a margin between cells or prevent overlap for symbols.
+  - **Draw Border**
+      Toggle the drawing of the bounds/border.
+  - **Zoom Amount**
+      This is used to zoom the view in/out.  It does not effect the result inserted into the sketch.  It's useful for when your palette window is too small and obscures some of the diagram.
 
 Once the voronoi diagram is added to a sketch, I will usually project the geometry onto a surface and then modify from there. Note that projecting onto a curved surface will not work at this time. In this case I'll use push/pull on the voronoi geometry to modify existing models.
 
