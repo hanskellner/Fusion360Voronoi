@@ -13,16 +13,26 @@ https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcartic
 ## Usage
 
 1. Run the "Voronoi" add-in from the Scripts and Add-Ins dialog.  Optionally, checkmark "Run at Startup" to automatically start each session.
+
   ![Scripts and Add-Ins Dialog](./images/FusionScriptsAndAddInsDialog.png)
+
 2. The command will be added to the Create dropdown in the Solids environment.
+
   ![Solid Create Dropdown](./images/SolidCreateDropDown.png)
+
 3. Click on the "Create Voronoi" menuitem or button.
+
   ![Voronoi Menu Item](./images/VoronoiMenuItem.png)
+
 4. A dialog will be displayed which allows you to select:
+
   ![Voronoi Dialog](./images/VoronoiDialog.png)
+
   - English or Metric Units 
   - Sketch Selection: A sketch to insert the voronoi.  If no sketch is selected then a new sketch will be created.
+
     ![Voronoi Dialog](./images/VoronoiDialogConstructionPlane.png)
+
   - Construction Plane : If no sketch was selected, choose the construction plane for new sketch
 5. Click 'Voronoi Editor'
 6. The Voronoi Sketch Generator palette will be displayed.
