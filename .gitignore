@@ -1,0 +1,30 @@
+/node_modules
+.package.swp
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+*.log
+
+.DS_Store
+.AppleDouble
+.LSOverride
+.localized
+
+.Spotlight-V100
+.Trashes
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+Thumbs.db
+ehthumbs.db
+
+Desktop.ini
+
+$RECYCLE.BIN/
