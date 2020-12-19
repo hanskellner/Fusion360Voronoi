@@ -84,12 +84,12 @@ Other examples posted on my [Fusion 360 project gallery](https://fusion360.autod
 
 ## Issues
 
-- The voronoi diagram is only inserted at the origin of the sketch and on the bottom side.  Working on a solution.
+- Inserting a voronoi diagram with many cells may cause Fusion 360 to hang for a long time.  There may be no workaround on the add-in side.
 
 ## TODO
 
 - Persist user settings
-- re-enable Llloyd's Relaxation
+- Re-enable Llloyd's Relaxation
 - Support more units (only inch and centimeters)
 
 ## Credits
