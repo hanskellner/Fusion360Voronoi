@@ -1,7 +1,170 @@
 <!DOCTYPE html>
 <html>
-<script type="text/javascript" charset="UTF-8" src="rhill-voronoi-core.min.js"></script>
-<script type="text/javascript" charset="UTF-8" src="Voronoi.js"></script>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Voronoi Sketch Generator">
+    <meta name="author" content="Hans Kellner">
+    <title>Voronoi Sketch Generator</title>
+
+    <link rel="canonical" href="https://github.com/hanskellner/Fusion360Voronoi">
+
+    <style>
+        .bd-placeholder-img {
+          font-size: 1.125rem;
+          text-anchor: middle;
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+        }
+  
+        @media (min-width: 768px) {
+          .bd-placeholder-img-lg {
+            font-size: 3.5rem;
+          }
+        }
+      </style>
+
+      <link rel="stylesheet" href="./dist/bootstrap-4.5.3-dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+
 <body>
+    <div class="wrapper">
+        <!-- Sidebar  -->
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <h4>Settings</h4>
+            </div>
+
+            <div class="sidebar-content">
+
+                <form>
+                    <div class="form-group form-row mb-0">
+                        <label for="pageWidthInput" class="col-sm-6 col-form-label">Width</label>
+                        <div class="col-sm-5">
+                            <input type="number" class="form-control" id="pageWidthInput" data-bind="value:pageWidthInput" min="1" value="6"  aria-describedby="pageWidthHelp">
+                        </div>
+                    </div>
+                    <div class="form-row ml-0 mt-0 mb-2">
+                        <small id="pageWidthHelp" class="form-text text-muted">Width of the sketch <span class="units"></span></small>
+                    </div>
+                    
+                    <div class="form-group form-row mb-0">
+                        <label for="pageHeightInput" class="col-sm-6 col-form-label">Height</label>
+                        <div class="col-sm-5">
+                            <input type="number" class="form-control" id="pageHeightInput" data-bind="value:pageHeightInput" min="1" value="4" aria-describedby="pageHeightHelp">
+                        </div>
+                    </div>
+                    <div class="form-row ml-0 mt-0 mb-2">
+                        <small id="pageHeightHelp" class="form-text text-muted">Height of the sketch <span class="units"></span></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edgeStyleSelect">Cell Style</label>
+                        <select class="form-control" id="edgeStyleSelect" aria-describedby="edgeStyleHelp">
+                            <option value="0">Curved</option>
+                            <option value="1">Straight</option>
+                            <option value="2">Circle</option>
+                            <option value="3">Square</option>
+                            <option value="4">Rounded Square</option>
+                            <option value="5">Star</option>
+                            <option value="6">Triangle</option>
+                            <option value="7">Pentagon</option>
+                            <option value="8">Hexagon</option>
+                            <option value="9">Octagon</option>
+                        </select>
+                        <small id="edgeStyleHelp" class="form-text text-muted">Style of the cell edges</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="cellCountRange">Cell Count</label>
+                        <div class="d-flex justify-content-center">
+                            <div class="w-75">
+                                <input type="range" class="form-control custom-range" id="cellCountRange" min="2" max="500" value="100" aria-describedby="cellCountHelp">
+                            </div>
+                            <span class="font-weight-bold text-primary ml-2" id="cellCountValueSpan" style="display: inline-block; width: 2em;"></span>
+                        </div>
+                        <small id="cellCountHelp" class="form-text text-muted">Number of cells</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="cellScaleRange">Cell Scale</label>
+                        <div class="d-flex justify-content-center">
+                            <div class="w-75">
+                                <input type="range" class="form-control custom-range" id="cellScaleRange" min="20" max="100" value="85" aria-describedby="cellScaleHelp">
+                            </div>
+                            <span class="font-weight-bold text-primary ml-2" id="cellScaleValueSpan" style="display: inline-block; width: 2em;"></span>
+                        </div>
+                        <small id="cellScaleHelp" class="form-text text-muted">Scale amount for cells</small>
+                    </div>
+                    
+                    <div class="form-group form-row mb-0">
+                        <div class="col-sm-1 ml-4 mr-0 px-0">
+                            <input type="checkbox" class="form-check-input" id="pageBorderCheckbox" data-bind="value:pageBorderCheckbox" aria-describedby="pageBorderhHelp">
+                        </div>
+                        <label for="pageBorderCheckbox" class="col-sm-6 form-check-label">Draw Border</label>
+                    </div>
+                    <div class="form-row ml-0 mt-0 mb-2">
+                        <small id="pageBorderhHelp" class="form-text text-muted">Draw the page border</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="viewScaleRange">Zoom Amount</label>
+                        <div class="d-flex justify-content-center">
+                            <div class="w-75">
+                                <input type="range" class="form-control custom-range" id="viewScaleRange" min="1" max="200" value="100" aria-describedby="viewScaleHelp">
+                            </div>
+                            <span class="font-weight-bold text-primary ml-2" id ="viewScaleValueSpan" style="display: inline-block; width: 2em;"></span>
+                        </div>
+                        <small id="viewScaleHelp" class="form-text text-muted">Zoom in or out of view</small>
+                    </div>
+                </form>
+            </div>
+        </nav>
+
+        <!-- Page Content  -->
+        <div id="containerMain" class="p-2">
+
+            <nav class="navbar navbar-expand navbar-light bg-light">
+
+                <button type="button" id="sidebarCollapse" class="btn btn-info ml-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-sliders" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M11.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM9.05 3a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0V3h9.05zM4.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM2.05 8a2.5 2.5 0 0 1 4.9 0H16v1H6.95a2.5 2.5 0 0 1-4.9 0H0V8h2.05zm9.45 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-2.45 1a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0v-1h9.05z"/>
+                    </svg>
+                </button>
+
+                <span class="navbar-brand ml-2 mb-0 h1">Voronoi Sketch Generator</span>
+
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                
+                <div class="collapse navbar-collapse" id="navbarMain">
+                    <form class="form-inline my-2 my-md-0">
+                        <button class="btn btn-outline-success my-2 my-sm-0 ml-3" type="submit" id="publishBtn">Publish</button>
+                        <button class="btn btn-outline-secondary my-2 my-sm-0 ml-2" type="button" id="closeBtn">Close</button>
+                    </form>
+                </div>
+            </nav>
+
+            <div class="m-3">
+                <canvas id="voronoiCanvas"></canvas>
+                <p style="text-align: center">This is the <a href="https://github.com/hanskellner/Fusion360Voronoi" target="_blank">Voronoi</a> add-in for Fusion 360 // By <a href="https://twitter.com/hanskellner" target="_blank">@hanskellner</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="dist/jquery-3.5.1.slim.min.js"></script>
+    <script type="text/javascript" src="dist/popper.min.js"></script>
+    <script type="text/javascript" src="dist/bootstrap-4.5.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script type="text/javascript" src="dist/paper/paper-full.min.js"></script>
+    <script type="text/javascript" src="dist/d3-delaunay/d3-delaunay.min.js"></script>
+
+    <script type="text/javascript" src="js/voronoi-editor.js"></script>
 </body>
+
 </html>

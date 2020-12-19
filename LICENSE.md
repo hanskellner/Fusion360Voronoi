@@ -1,4 +1,4 @@
-Copyright (C) 2015 Hans Kellner
+Copyright (C) 2015-2020 Hans Kellner
 https://github.com/hanskellner/Fusion360Voronoi
 
 Licensed under The MIT License

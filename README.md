@@ -1,71 +1,93 @@
-# ![Fusion360Voronoi](./resources/32x32.png) Fusion360Voronoi
+# ![Fusion360Voronoi](./resources/32x32.png) Voronoi Sketch Generator Add-In for Autodesk Fusion 360
 
 ![Fusion 360 Voronoi](./resources/Voronoi-tooltip.png)
 
-This script is used for generating voronoi sketches in [Autodesk Fusion 360](http://fusion360.autodesk.com/).  Once created, these sketches may then be used for creating or modifying models.
+This is an [Autodesk Fusion 360](http://fusion360.autodesk.com/) add-in for generating voronoi diagrams.  Once created, a voronoi diagram is inserted into a sketch and then may be used for creating or modifying models.
 
-## JavaScript Add-In Support in Fusion 360
-
-Note that JavaScript development (editing/debugging) is no longer supported within Fusion 360. But existing JavaScript add-ins, such as *Voronoi* can still be installed and run.
-
-More information here:
-
-https://forums.autodesk.com/t5/fusion-360-api-and-scripts/image-2-surface-script-for-fusion-360/m-p/7324273#M4403
-
-<span align='center'><img alt='Image of Voronoi Table' src='./resources/Voronoi_Table_sm.png' /></span>
-
-<span align='center'><img alt='Image of Voronoi 128 Cell Sample' src='./resources/Voronoi-128-Cells-Copper-sm.png' /></span>
-<span align='center'><img alt="Image of printed boxes with Voronoi 100 Cell Sample with 10 iterations of loyds relaxation vs 0" src="https://user-images.githubusercontent.com/130342/45584046-724d1800-b8d5-11e8-9704-364de04b2ef0.jpg"/></span>
 ## Installation
 
 Please follow the instructions here:
 
 https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcarticles/sfdcarticles/How-to-install-an-ADD-IN-and-Script-in-Fusion-360.html
 
-Note, you can still add scripts implemented in JavaScript.
-
 ## Usage
 
-1. Run the "Voronoi" script from the Script Manager
-2. The settings dialog will be shown.  Adjust to your preferences:
+1. Run the "Voronoi" add-in from the Scripts and Add-Ins dialog.  Optionally, checkmark "Run at Startup" to automatically start each session.
+  ![Scripts and Add-Ins Dialog](./images/FusionScriptsAndAddInsDialog.png)
+2. The command will be added to the Create dropdown in the Solids environment.
+  ![Solid Create Dropdown](./images/SolidCreateDropDown.png)
+3. Click on the "Create Voronoi" menuitem or button.
+  ![Voronoi Menu Item](./images/VoronoiMenuItem.png)
+4. A dialog will be displayed which allows you to select:
+  ![Voronoi Dialog](./images/VoronoiDialog.png)
+  - English or Metric Units 
+  - Sketch Selection: A sketch to insert the voronoi.  If no sketch is selected then a new sketch will be created.
+    ![Voronoi Dialog](./images/VoronoiDialogConstructionPlane.png)
+  - Construction Plane : If no sketch was selected, choose the construction plane for new sketch
+5. Click 'Voronoi Editor'
+6. The Voronoi Sketch Generator palette will be displayed.
 
-  ![Image of Voronoi Settings](./resources/Voronoi%20Sketch%20Gen%20-%20Settings.png)
+  ![Image of Voronoi Editor](./images/VoronoiSketchGenerator.png)
 
-  - Sketch Selection: Select a sketch to insert Voronoi or none to create a sketch.
-  - Edge Style: Straight or Curved edges
-  - Number of Cells (2-256) : Number of cells created in the sketch
-  - Number of Lloyd's relax iterations: 
-  - Pattern width : Width of the area filled with cells
-  - Pattern height : Height of the area filled with cells
-  - % to scale cells (10-100) : Percentage to scale down each of the cells
-3. Click OK to generate the sketch
+7. On the left side of the palette are the settings that control the voronoi generation.  See below for details.
+8. On the top title bar are:
+  - Left button toggles the settings palette opened or closed.
+  - Publish button will insert the diagram into the selected sketch or create a new sketch to insert into.
+  - Close will exit the palette without inserting the diagram
 
-Note that a large number (> 128) of cells may take a while to generate (sometimes several minutes).
+## Settings
 
-Once the voronoi sketch is created I will usually project the geometry onto a surface and then modify from there. Note that projecting onto a curved surface will not work at this time. In this case I'll use push/pull on the voronoi geometry to modify existing models. The image above was created using this method and a 128 cell voronoi pattern.
+  - Width, Height
+    These set the width and height that bound the result.  These values use the units specified in the initial dialog (inches or centimeters).
+  - Cell Style
+    This dropdown is used to define how the cells are rendered.  The first two, Curves and Straight, create the two most common style of voronoi patterns.  The remaining options are symbols.  Selecting a symbol will cause one to be inserted at the centroid of each cell and scaled to fit within the cell.  Note that the scaling is not perfect at the moment.  The rotation of each symbol is also set to a random value.
+  - Cell Count
+    This sets the number of cells.  Note that a large number (> 100) of cells may take a while to generate (sometimes several minutes).
+  - Cell Scale
+    This scales the cells and is useful to add a margin between cells or prevent overlap for symbols.
+  - Draw Border
+    Toggle the drawing of the bounds/border.
+  - Zoom Amount
+    This is used to zoom the view in/out.  It does not effect the result inserted into the sketch.  It's useful for when your palette window is too small and obscures some of the diagram.
+
+Once the voronoi diagram is added to a sketch, I will usually project the geometry onto a surface and then modify from there. Note that projecting onto a curved surface will not work at this time. In this case I'll use push/pull on the voronoi geometry to modify existing models.
 
 ## Video Screencast 
 
-Please view the following screencast to see Voronoi in use: [Using the Voronoi v2 add-in for Fusion 360](https://autode.sk/2S2jpR5)
+Please view the following screencast to see Voronoi in use:
+
+https://knowledge.autodesk.com/community/screencast/f3736c33-f135-481e-8d82-4a6fa9a56cd6
+
+Here's a video for previous version of the add-in:
+
+https://autode.sk/2S2jpR5
 
 ## Examples
 
-Examples posted on my [Fusion 360 project gallery](https://fusion360.autodesk.com/projects/voronoi-script).
+<span align='center'><img alt='Image of Voronoi Table' src='./images/examples/Voronoi_Table_sm.png' /></span>
+<span align='center'><img alt='Image of Voronoi 128 Cell Sample' src='./images/examples/Voronoi-128-Cells-Copper-sm.png' /></span>
+<span align='center'><img alt="Image of printed boxes with Voronoi 100 Cell Sample with 10 iterations of loyds relaxation vs 0" src="https://user-images.githubusercontent.com/130342/45584046-724d1800-b8d5-11e8-9704-364de04b2ef0.jpg"/></span>
+<span align='center'><img alt='Image of Voronoi 256 Cell Sample' src='./images/examples/Voronoi-16x4-Cells-Walnut-sm.png' /></span>
+<span align='center'><img alt='Image of Voronoi 256 Cell Sample' src='./images/examples/Voronoi-256-Cells-Brass-sm.png' /></span>
 
-<span align='center'><img alt='Image of Voronoi 256 Cell Sample' src='./resources/Voronoi-16x4-Cells-Walnut-sm.png' /></span>
-
-<span align='center'><img alt='Image of Voronoi 256 Cell Sample' src='./resources/Voronoi-256-Cells-Brass-sm.png' /></span>
+Other examples posted on my [Fusion 360 project gallery](https://fusion360.autodesk.com/projects/voronoi-script).
 
 ## Issues
 
-- One cell may not be filled after generation.  Adjusting a control point then forces it to fill.
-- It's not possible to adjust the spline's knots and strengths therefore the curves don't conform as close as they should.  The "% Scale Cell" value is a workaround for this.  Scaling down the cells reduces the possible overlap of the cells.
+- The voronoi diagram is only inserted at the origin of the sketch and on the bottom side.  Working on a solution.
+
+## TODO
+
+- Persist user settings
+- re-enable Llloyd's Relaxation
+- Support more units (only inch and centimeters)
 
 ## Credits
 
-This code makes use of the Raymond Hill's well done Javascript-Voronoi code:
-https://github.com/gorhill/Javascript-Voronoi
+This software makes use of: https://github.com/d3/d3-delaunay
 
 ### Lloyd's Relaxation Support
 
-Github user [LeonFedotov](https://github.com/LeonFedotov) kindly submitted the changes to support Lloyd's relaxation algorithm.  More information about the algorithm on [Wikipedia](https://en.wikipedia.org/wiki/Lloyd%27s_algorithm).
+Github user [LeonFedotov](https://github.com/LeonFedotov) kindly submitted the changes to support Lloyd's relaxation algorithm.
+
+More information about the algorithm on [Wikipedia](https://en.wikipedia.org/wiki/Lloyd%27s_algorithm).
