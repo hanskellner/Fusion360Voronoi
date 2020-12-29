@@ -164,6 +164,13 @@ Other examples posted on my [Fusion 360 project gallery](https://fusion360.autod
 
 This software makes use of: https://github.com/d3/d3-delaunay
 
+Thanks for suggestions from various folks:
+
+- [LeonFedotov](https://github.com/LeonFedotov)
+- Sualp O.
+- Brian G.
+- All others I might have missed.
+
 ### Lloyd's Relaxation Support
 
 Github user [LeonFedotov](https://github.com/LeonFedotov) kindly submitted the changes to support Lloyd's relaxation algorithm.
