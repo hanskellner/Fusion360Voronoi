@@ -99,7 +99,7 @@ Once the voronoi diagram is added to a sketch, I will usually project the geomet
 
 When a profile is selected, the add-in dialog will display the width and height of the profile.  You may click on the 'Use Profile Size' button to copy those values into the voronoi's Width and Height fields.  When the voronoi editor is displayed, the profile will be displayed as a blue outline.  The settings will initially clip any cells that fall outside of or intersect with the profile.  You may toggle those options on or off.
 
-    ![Voronoi Dialog with Profile](./images/VoronoiDialog_Profile.png)
+![Voronoi Dialog with Profile](./images/VoronoiDialog_Profile.png)
 
 It's also possible to select a profile on the planar face of a body.  Here's an example:
 
@@ -114,7 +114,7 @@ It's also possible to select a profile on the planar face of a body.  Here's an 
 
 At this point the palette will be appear and the circular profile contaning a voronoi diagram.
 
-    ![Voronoi Editor with Profile](./images/VoronoiSketchGenerator_Profile.png)
+![Voronoi Editor with Profile](./images/VoronoiSketchGenerator_Profile.png)
 
 7. Once satisified with the voronoi, click 'Publish'.
 8. The voronoi diagram has now been inserted into the sketch created on the top of the cylinder.
