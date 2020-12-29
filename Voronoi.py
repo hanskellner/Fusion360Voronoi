@@ -17,23 +17,17 @@ _PALETTE_OK_BUTTON_TEXT = 'Voronoi Editor'
 
 _SOLID_CREATE_PANEL_ID = 'SolidCreatePanel'
 _CREATE_VORONOI_CMD_ID = 'createVoronoiCmdId'
+_CREATE_VORONOI_CORE_CMD_ID = 'createVoronoiCoreCmdId'
 
-_DROPDOWN_INPUT_ID_STANDARD = 'standardDropDownInputId'
-_SELECTION_INPUT_ID_SKETCH = 'sketchSelectionInputId'
+_VALUE_INPUT_ID_WIDTH = 'widthValueInputId'
+_VALUE_INPUT_ID_HEIGHT = 'heightValueInputId'
+
+_VALUE_INPUT_ID_WIDTH_PROFILE = 'widthProfileValueInputId'
+_VALUE_INPUT_ID_HEIGHT_PROFILE = 'heightProfileValueInputId'
+_BOOL_INPUT_ID_APPLY_PROFILE_SIZE = 'applyProfileSizeBoolValueInputId'
+
+_SELECTION_INPUT_ID_TARGET = 'targetSelectionInputId'
 _DROPDOWN_INPUT_ID_CONSTRUCTION_PLANE = 'constructionPlaneDropDownInputId'
-
-_ATTRIBUTE_GROUP_NAME = 'Voronoi'
-_ATTRIBUTE_NAME_STANDARD = 'standard'
-
-_SYSTEM_ENGLISH = 'English'
-_SYSTEM_METRIC = 'Metric'
-
-_SYSTEM_ENGLISH_UNIT = 'in'
-_SYSTEM_METRIC_UNIT = 'cm'
-
-# Displayed in UI control
-_SYSTEM_ENGLISH_ITEM_NAME = 'English (Inches)'
-_SYSTEM_METRIC_ITEM_NAME = 'Metric (Centimeters)'
 
 _CONSTRUCTION_PLANE_XY = "XY Plane"
 _CONSTRUCTION_PLANE_XZ = "XZ Plane"
@@ -48,43 +42,216 @@ _ui = adsk.core.UserInterface.cast(None)
 
 _handlers = []  # event handlers
 
-_standardSystem = _SYSTEM_ENGLISH
-_units = _SYSTEM_ENGLISH_UNIT
-
-_selectedSketchName = ''
-
 # Which construction plane to place sketch when a sketch isn't specified
 _constructionPlane = _CONSTRUCTION_PLANE_XY
 
-_standardDropDownInput = adsk.core.DropDownCommandInput.cast(None)
-_sketchSelectionInput = adsk.core.SelectionCommandInput.cast(None)
-_constructionPlaneDropDownInput = adsk.core.DropDownCommandInput.cast(None)
+_units = 'cm'   # user specified units
 
+_widthVoronoi = 0      # dimensions to use for voronoi.  Should be in centimeters.
+_heightVoronoi = 0
+
+_selectedSketchName = ''
+
+# Set to the points that roughly define the selected profile
+_profilePoints = []
+_profileSketchName = ''
+_profileOrigin = None
+
+_svgFilePath = ''
+
+# Command Inputs
+_targetSelectionInput = adsk.core.SelectionCommandInput.cast(None)
+_constructionPlaneDropDownInput = adsk.core.DropDownCommandInput.cast(None)
+_widthValueCommandInput = adsk.core.ValueCommandInput.cast(None)
+_heightValueCommandInput = adsk.core.ValueCommandInput.cast(None)
+_widthProfileStringValueCommandInput = adsk.core.StringValueCommandInput.cast(None)
+_heightProfileStringValueCommandInput = adsk.core.StringValueCommandInput.cast(None)
+_applyProfileSizeBoolValueInput = adsk.core.BoolValueCommandInput.cast(None)
 
 #############################################################################
 
+# Reset some of the variables before dialog appears
+def resetState():
+    global _profilePoints, _profileSketchName, _profileOrigin, _selectedSketchName, _svgFilePath
+    _profilePoints = []
+    _profileSketchName = ''
+    _profileOrigin = None
+    _selectedSketchName = ''
+    _svgFilePath = ''
+
 # Get the selected sketch name; otherwise an empty string
-def getSketchName():
+def getSelectedSketchName():
     # Get the selected sketch
-    if _sketchSelectionInput.selectionCount == 1:
-        theSketch = _sketchSelectionInput.selection(0).entity
-        return theSketch.name
-    else:
-        # A sketch wasn't selected so no name
-        return ''
+    if _targetSelectionInput.selectionCount == 1:
+        theSelection = _targetSelectionInput.selection(0)
+
+        if theSelection.objectType == 'Sketch':
+            return theSelection.entity.name
+            
+    # Nothing selected or a profile selected so no sketch name
+    return ''
+
+# Returns an array of arrays containing the points for each curve in the profile.
+# The curves are ordered so endpoints are equal.
+def getProfilePoints(profile):
+
+    outerLoop = None
+
+    # Find the outer loop
+    for iLoop in range(profile.profileLoops.count):
+        if profile.profileLoops.item(iLoop).isOuter:
+            outerLoop = profile.profileLoops.item(iLoop)
+            break
+
+    if outerLoop == None:
+        return None
+
+    profileCurves = []  # Will contain an array for each curve
+
+    curves = outerLoop.profileCurves
+    for iCurve in range(curves.count):
+        profileCurves.append([])
+
+        curve = curves.item(iCurve)
+        isLine = curve.geometryType == adsk.core.Curve3DTypes.Line3DCurveType
+
+        if isLine:
+            line = adsk.core.Line3D.cast(curve.geometry)
+            profileCurves[iCurve].append(line.startPoint)
+            profileCurves[iCurve].append(line.endPoint)
+        else:
+            evaluator = curve.geometry.evaluator
+            (retVal, startParam, endParam) = evaluator.getParameterExtents()
+            (retVal, length) = evaluator.getLengthAtParameter(startParam, endParam)
+
+            num_steps = length / 0.2   # step every 2mm
+            step = (endParam - startParam)/num_steps
+
+            param = startParam
+            while param < endParam:
+                (result, pt) = evaluator.getPointAtParameter(param)
+                profileCurves[iCurve].append(pt)
+                param += step
+
+            if param > endParam:
+                (retVal, startPoint, endPoint) = evaluator.getEndPoints()
+                profileCurves[iCurve].append(endPoint)
+
+    # ARGH: The curves returned above are not sorted.  Need to sort them.
+    if len(profileCurves) <= 1:
+        return profileCurves
+
+    lastCurve = None
+    sortedProfileCurves = []
+
+    # Extract each profile curve as it gets added to sorted list
+    while len(profileCurves) > 0:
+        if lastCurve == None:
+            lastCurve = profileCurves[0]
+            sortedProfileCurves.append(lastCurve)
+            profileCurves.pop(0)
+        else:
+            # Look for the next path that connects with the last path
+            foundMatch = False
+
+            for iCurve in range(len(profileCurves)):
+                curve = profileCurves[iCurve]
+                lastEndPoint = lastCurve[len(lastCurve)-1]
+
+                # Does this path begin with the end point of last path?
+                if lastEndPoint.isEqualTo(curve[0]):
+                    sortedProfileCurves.append(curve)
+                    lastCurve = curve
+                    profileCurves.pop(iCurve)
+                    foundMatch = True
+                    break   # Drop out of for loop
+                
+                elif lastEndPoint.isEqualTo(curve[len(curve)-1]):
+                    # Argh - Need to reverse this curves point order
+                    curveReversed = []
+                    for iPt in range(len(curve)-1, -1, -1):
+                        curveReversed.append(curve[iPt])
+                    lastCurve = curveReversed
+                    sortedProfileCurves.append(lastCurve)
+                    profileCurves.pop(iCurve)
+                    foundMatch = True
+                    break   # Drop out of for loop
+
+            # If not match found then we need to exit search but first copy over path as-is
+            if foundMatch == False:
+                print("Unable to sort profile paths")
+                for iCurve in range(len(profileCurves)):
+                    sortedProfileCurves.append(profileCurves[iCurve])
+                profileCurves = [] # This will drop out of while loop
+    
+    return sortedProfileCurves
 
 
-def moveSketch(aSketch, dx, dy, dz):
+def getProfileBounds(profile):
+
+    outerLoop = None
+
+    # Find the outer loop
+    for iLoop in range(profile.profileLoops.count):
+        if profile.profileLoops.item(iLoop).isOuter:
+            outerLoop = profile.profileLoops.item(iLoop)
+            break
+
+    if outerLoop == None:
+        return None
+
+    # Get the combined bbox for the outer loop's curves
+    bbox = None
+    for iCurve in range(outerLoop.profileCurves.count):
+        curve = outerLoop.profileCurves.item(iCurve)
+        if bbox == None:
+            bbox = curve.boundingBox.copy()
+        else:
+            bbox.combine(curve.boundingBox)
+
+    return bbox
+
+
+# Get the selected profile; otherwise None
+def getSelectedProfile():
+    profile = None
+    bbox = None
+    name = ''
+
+    if _targetSelectionInput.selectionCount == 1:
+        theSelection = _targetSelectionInput.selection(0)
+
+        # REVIEW: Do we need to test for all Profile subclasses?
+        if theSelection.entity.objectType == adsk.fusion.Profile.classType():
+            profile = theSelection.entity
+            bbox = getProfileBounds(profile)
+            name = profile.parentSketch.name
+
+            print("Profile bounds: {0},{1},{2} - {3},{4},{5}".format(bbox.minPoint.x,bbox.minPoint.y,bbox.minPoint.z,bbox.maxPoint.x,bbox.maxPoint.y,bbox.maxPoint.z))
+
+    # Nothing selected or a Sketch selected
+    return profile, bbox, name
+
+
+# HACK: the insert from SVG fixes the curves.  Use this to unfix so that
+# they move when their associated points are moved.
+def setFixedSketchPoints(aSketch, flag):
     try:
-
-        # HACK: the insert from SVG fixes the curves.  Unfix so that
-        # they move when their associated points are moved.
         # NOTE: throws an exception
         #for curve in aSketch.sketchCurves:
         #    curve.isFixed = False
         for iCurve in range(aSketch.sketchCurves.count):
             curve = aSketch.sketchCurves.item(iCurve)
-            curve.isFixed = False
+            curve.isFixed = flag
+    except:
+        if _ui:
+            _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+
+
+# NOTE: This is a very computation expensive operation.  It can take several
+# minutes to perform depending on the complexity of the sketch.
+def moveSketch(aSketch, dx, dy, dz):
+    try:
 
         points = adsk.core.ObjectCollection.create()
         # NOTE: throws an exception
@@ -118,6 +285,41 @@ def moveSketch(aSketch, dx, dy, dz):
             _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 
+# Send information to the palette. This will trigger an event in the javascript
+# within the html so that it can be handled.
+# Note that all values are in centimeters (default units)
+def sendInitInfoToHTML(palette):
+
+    global _units, _widthVoronoi, _heightVoronoi, _profilePoints
+
+    #des = adsk.fusion.Design.cast(_app.activeProduct)
+
+    jsonDataStr = '{{"units": "{0}", "width": "{1}", "height": "{2}", "profile": ['.format(_units, _widthVoronoi, _heightVoronoi)
+
+    # If profile selected and there are profile points then add to json
+    for iPath in range(len(_profilePoints)):
+        if iPath > 0:
+            jsonDataStr += ', '
+        jsonDataStr += '['
+
+        pathPoints = _profilePoints[iPath]
+        for iPt in range(len(pathPoints)):
+            if iPt > 0:
+                jsonDataStr += ', '
+
+            x = pathPoints[iPt].x # des.unitsManager.convert(pathPoints[iPt].x, 'cm', _units)
+            y = pathPoints[iPt].y # des.unitsManager.convert(pathPoints[iPt].y, 'cm', _units)
+            
+            jsonDataStr += '{{"x":"{0:.4}","y":"{1:.4}"}}'.format(x,y)
+
+        jsonDataStr += ']'
+
+    jsonDataStr += ']}'
+    print(jsonDataStr)
+
+    palette.sendInfoToHTML('init', jsonDataStr)
+
+
 #############################################################################
 
 # Event handler for the inputChanged event.
@@ -126,33 +328,61 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
         super().__init__()
     def notify(self, args):
         try:
+            global _app, _units, _widthVoronoi, _heightVoronoi, _profilePoints, _profileSketchName, _constructionPlane
+            global _widthValueCommandInput, _heightValueCommandInput, _widthProfileStringValueCommandInput, _heightProfileStringValueCommandInput
+
+            des = adsk.fusion.Design.cast(_app.activeProduct)
+
             eventArgs = adsk.core.InputChangedEventArgs.cast(args)
             changedInput = eventArgs.input
-            
-            global _units, _constructionPlane
 
-            if changedInput.id == _DROPDOWN_INPUT_ID_STANDARD:
-                if _standardDropDownInput.selectedItem.name == _SYSTEM_ENGLISH_ITEM_NAME:
-                    _standardSystem = _SYSTEM_ENGLISH
-                    _units = _SYSTEM_ENGLISH_UNIT
-                elif _standardDropDownInput.selectedItem.name == _SYSTEM_METRIC_ITEM_NAME:
-                    _standardSystem = _SYSTEM_METRIC
-                    _units = _SYSTEM_METRIC_UNIT
+            if changedInput.id == _SELECTION_INPUT_ID_TARGET:
+                # Either a sketch, a profile, or none selected...
+                _selectedSketchName = getSelectedSketchName()
+                ( profile, bboxProfile, profileSketchName) = getSelectedProfile()
 
-                des = adsk.fusion.Design.cast(_app.activeProduct)
-                if des:
-                    standardAttrib = des.attributes.itemByName(_ATTRIBUTE_GROUP_NAME, _ATTRIBUTE_NAME_STANDARD)
-                    if not standardAttrib:
-                        des.attributes.add(_ATTRIBUTE_GROUP_NAME, _ATTRIBUTE_NAME_STANDARD, _standardSystem)
-                    else:
-                        standardAttrib.value = _standardSystem
-            
-            elif changedInput.id == _SELECTION_INPUT_ID_SKETCH:
-                sketchName = getSketchName()
-                _constructionPlaneDropDownInput.isEnabled = (sketchName == None or sketchName == '')
+                _constructionPlaneDropDownInput.isEnabled = (profile == None and _selectedSketchName == '')
+
+                # If a profile selected, then get dimensions and set in inputs
+                if profile != None:
+                    # Get profile width/height (in centimeters)
+                    widthProfile = bboxProfile.maxPoint.x - bboxProfile.minPoint.x
+                    heightProfile = bboxProfile.maxPoint.y - bboxProfile.minPoint.y
+
+                    # Set the profile width and height input values
+                    _widthProfileStringValueCommandInput.value = '{0:.2f} '.format(des.unitsManager.convert(widthProfile, 'cm', _units)) + _units
+                    _heightProfileStringValueCommandInput.value = '{0:.2f} '.format(des.unitsManager.convert(heightProfile, 'cm', _units)) + _units
+
+                    _profilePoints = getProfilePoints(profile)
+                    _profileSketchName = profileSketchName
+                    _profileOrigin = bboxProfile.minPoint
+                else:
+                    _widthProfileStringValueCommandInput.value = "0.0"
+                    _heightProfileStringValueCommandInput.value = "0.0"
+                    _profilePoints = []
+
+                _widthProfileStringValueCommandInput.isVisible = (profile != None)
+                _heightProfileStringValueCommandInput.isVisible = (profile != None)
+                _applyProfileSizeBoolValueInput.isVisible = (profile != None)
 
             elif changedInput.id == _DROPDOWN_INPUT_ID_CONSTRUCTION_PLANE:
                 _constructionPlane = _constructionPlaneDropDownInput.selectedItem.name
+
+            elif changedInput.id == _BOOL_INPUT_ID_APPLY_PROFILE_SIZE:
+                # Copy profile size over to voronoi size (should only be possible if profile selected)
+                ( profile, bboxProfile, profileSketchName) = getSelectedProfile()
+                if profile != None:
+                    _widthValueCommandInput.value = bboxProfile.maxPoint.x - bboxProfile.minPoint.x
+                    _heightValueCommandInput.value = bboxProfile.maxPoint.y - bboxProfile.minPoint.y
+                else:
+                    _widthValueCommandInput.value = 0
+                    _heightValueCommandInput.value = 0
+
+            # Make sure to save these for later as they might have changed
+            if _widthValueCommandInput.isValidExpression:
+                _widthVoronoi = _widthValueCommandInput.value
+            if _heightValueCommandInput.isValidExpression:
+                _heightVoronoi = _heightValueCommandInput.value
 
         except:
             if _ui:
@@ -165,9 +395,13 @@ class VoronoiCommandActivatedHandler(adsk.core.CommandEventHandler):
         super().__init__()
     def notify(self, args):
         try:
-            #standardDropDown = args.command.commandInputs.itemById(_DROPDOWN_INPUT_ID_STANDARD)
-            #standardDropDown.isVisible = False
-            pass
+            resetState()
+
+            global _widthProfileStringValueCommandInput, _heightProfileStringValueCommandInput, _applyProfileSizeBoolValueInput
+            _widthProfileStringValueCommandInput.isVisible = False
+            _heightProfileStringValueCommandInput.isVisible = False
+            _applyProfileSizeBoolValueInput.isVisible = False
+
         except:
             if _ui:
                 _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
@@ -179,15 +413,10 @@ class VoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
         super().__init__()
     def notify(self, args):
         try:
-            global _selectedSketchName, _units
-
-            # Get the selected sketch name
-            _selectedSketchName = getSketchName()
-
             # Create and display the palette.
             palette = _ui.palettes.itemById(_PALETTE_ID)
             if not palette:
-                palette = _ui.palettes.add(_PALETTE_ID, _PALETTE_TITLE, _PALETTE_HTML_FILENAME, True, False, True, 1200, 720, True)
+                palette = _ui.palettes.add(_PALETTE_ID, _PALETTE_TITLE, _PALETTE_HTML_FILENAME, True, False, True, 1120, 640, True)
 
                 # Float the palette.
                 palette.dockingState = adsk.core.PaletteDockingStates.PaletteDockStateFloating
@@ -212,12 +441,9 @@ class VoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
             else:
                 palette.isVisible = True
 
-                # Send information to the palette. This will trigger an event in the javascript
-                # within the html so that it can be handled.
                 # HACK: We are doing this here and not in create above since the msg never is
                 # received by the browser that first time.  Handled in a html callback.
-                jsonDataStr = '{{"sketchName": "{0}","units": "{1}"}}'.format(_selectedSketchName, _units)
-                palette.sendInfoToHTML('init', jsonDataStr)
+                sendInitInfoToHTML(palette)
 
         except:
             if _ui:
@@ -234,60 +460,63 @@ class VoronoiCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             des = adsk.fusion.Design.cast(_app.activeProduct)
             if not des:
                 _ui.messageBox('A Fusion design must be active when invoking this command.')
-                return()
+                return
 
             # Determine units
-            defaultUnits = des.unitsManager.defaultLengthUnits
-                
-            # Determine whether to use inches or millimeters as the intial default.
             global _units
-            if defaultUnits == 'in' or defaultUnits == 'ft':    # literals from Fusion
-                _units = _SYSTEM_ENGLISH_UNIT
-            else:
-                _units = _SYSTEM_METRIC_UNIT
-                        
-            # Define the default values and get the previous values from the attributes.
-            if _units == _SYSTEM_ENGLISH_UNIT:
-                _standardSystem = _SYSTEM_ENGLISH
-            else:
-                _standardSystem = _SYSTEM_METRIC
+            _units = des.unitsManager.defaultLengthUnits
 
-            standardAttrib = des.attributes.itemByName(_ATTRIBUTE_GROUP_NAME, _ATTRIBUTE_NAME_STANDARD)
-            if standardAttrib:
-                _standardSystem = standardAttrib.value
-                
-            if _standardSystem == _SYSTEM_ENGLISH:
-                _units = _SYSTEM_ENGLISH_UNIT
-            else:
-                _units = _SYSTEM_METRIC_UNIT
+            # No profile
+            _profileSketchName = ''
 
             # Setup the command
             cmd = args.command
             cmd.isExecutedWhenPreEmpted = False     # cancel cmd if another is run
             #cmd.helpFile = 'help.html'
 
-            # Define the inputs.
-            global _standardDropDownInput, _sketchSelectionInput, _constructionPlaneDropDownInput
+            global _targetSelectionInput, _constructionPlaneDropDownInput, _widthValueCommandInput, _heightValueCommandInput
+            global _widthProfileStringValueCommandInput, _heightProfileStringValueCommandInput, _applyProfileSizeBoolValueInput
 
+            # Define the inputs.
             cmdInputs_ = cmd.commandInputs
-            
-            _standardDropDownInput = cmdInputs_.addDropDownCommandInput(_DROPDOWN_INPUT_ID_STANDARD, 'Units', adsk.core.DropDownStyles.TextListDropDownStyle)
-            if _standardSystem == _SYSTEM_ENGLISH:
-                _standardDropDownInput.listItems.add(_SYSTEM_ENGLISH_ITEM_NAME, True)
-                _standardDropDownInput.listItems.add(_SYSTEM_METRIC_ITEM_NAME, False)
-            else:
-                _standardDropDownInput.listItems.add(_SYSTEM_ENGLISH_ITEM_NAME, False)
-                _standardDropDownInput.listItems.add(_SYSTEM_METRIC_ITEM_NAME, True)
-            
-            _sketchSelectionInput = cmdInputs_.addSelectionInput(_SELECTION_INPUT_ID_SKETCH, 'Sketch Selection', 'Select a sketch to place the Voronoi')
-            _sketchSelectionInput.addSelectionFilter('Sketches')
-            _sketchSelectionInput.setSelectionLimits(0,1)
+
+            _targetSelectionInput = cmdInputs_.addSelectionInput(_SELECTION_INPUT_ID_TARGET, 'Sketch or Profile', 'Select a sketch or profile to place the Voronoi')
+            _targetSelectionInput.addSelectionFilter('Sketches')
+            _targetSelectionInput.addSelectionFilter('Profiles')
+            _targetSelectionInput.setSelectionLimits(0,1)
 
             _constructionPlaneDropDownInput = cmdInputs_.addDropDownCommandInput(_DROPDOWN_INPUT_ID_CONSTRUCTION_PLANE, 'Construction Plane', adsk.core.DropDownStyles.TextListDropDownStyle)
             _constructionPlaneDropDownInput.listItems.add(_CONSTRUCTION_PLANE_XY, (_constructionPlane == _CONSTRUCTION_PLANE_XY))
             _constructionPlaneDropDownInput.listItems.add(_CONSTRUCTION_PLANE_XZ, (_constructionPlane == _CONSTRUCTION_PLANE_XZ))
             _constructionPlaneDropDownInput.listItems.add(_CONSTRUCTION_PLANE_YZ, (_constructionPlane == _CONSTRUCTION_PLANE_YZ))
-            
+
+            # Create a default values using a string
+            value_width = adsk.core.ValueInput.createByString('10.0 in')
+            value_height = adsk.core.ValueInput.createByString('7.5 in')
+
+            if _units != 'in' and _units != 'ft':
+                value_width = adsk.core.ValueInput.createByString('25.0 cm')
+                value_height = adsk.core.ValueInput.createByString('20.0 cm')
+
+            _widthValueCommandInput = cmdInputs_.addValueInput(_VALUE_INPUT_ID_WIDTH, 'Width', _units, value_width) # adsk.core.ValueInput.createByReal(25.0))
+            _heightValueCommandInput = cmdInputs_.addValueInput(_VALUE_INPUT_ID_HEIGHT, 'Height', _units, value_height) # adsk.core.ValueInput.createByReal(20.0))
+
+            global _widthVoronoi, _heightVoronoi
+            _widthVoronoi = _widthValueCommandInput.value
+            _heightVoronoi = _heightValueCommandInput.value
+
+            _widthProfileStringValueCommandInput = cmdInputs_.addStringValueInput(_VALUE_INPUT_ID_WIDTH_PROFILE, 'Profile Width')
+            _widthProfileStringValueCommandInput.isReadOnly = True
+            _widthProfileStringValueCommandInput.isVisible = False
+
+            _heightProfileStringValueCommandInput = cmdInputs_.addStringValueInput(_VALUE_INPUT_ID_HEIGHT_PROFILE, 'Profile Height')
+            _heightProfileStringValueCommandInput.isReadOnly = True
+            _heightProfileStringValueCommandInput.isVisible = False
+
+            _applyProfileSizeBoolValueInput = cmdInputs_.addBoolValueInput(_BOOL_INPUT_ID_APPLY_PROFILE_SIZE, 'Use Profile Size', False, './/resources//CopyProfileSize')
+            _applyProfileSizeBoolValueInput.isVisible = False
+
+            # Change the OK button text to indicate we will show the voronoi editor palette
             cmd.okButtonText = _PALETTE_OK_BUTTON_TEXT
 
             # Setup event handlers
@@ -319,13 +548,13 @@ class PaletteCloseEventHandler(adsk.core.UserInterfaceGeneralEventHandler):
                 _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 
-# Event handler for the palette HTML event.                
+# Event handler for the palette HTML event.
 class MyHTMLEventHandler(adsk.core.HTMLEventHandler):
     def __init__(self):
         super().__init__()
     def notify(self, args):
         try:
-            global _selectedSketchName
+            global _svgFilePath
 
             htmlArgs = adsk.core.HTMLEventArgs.cast(args)            
             data = json.loads(htmlArgs.data)
@@ -333,7 +562,7 @@ class MyHTMLEventHandler(adsk.core.HTMLEventHandler):
             # This handler can receive the return value from the JS fusionJavaScriptHandler() call.
             # If the action value isn't present then ignore this call.
             if data == '' or not 'action' in data:
-                return ()
+                return
             
             theAction = data['action']
             theArgs = data['arguments']
@@ -343,16 +572,16 @@ class MyHTMLEventHandler(adsk.core.HTMLEventHandler):
 
                 # Return information to the palette. This can then be handled by the palette JS code
                 # NOTE: This isn't working.  On the JS side the value is a Promise object???
-                #htmlArgs.returnData = '{{"sketchName": "{0}","units": "{1}"}}'.format(_selectedSketchName, _units)
+                #htmlArgs.returnData = '{{"sketchName": "{0}","units": "{1}"}}'.format(selectedSketchName, _units)
 
-                # Send information to the palette. This will trigger an event in the javascript
-                # within the html so that it can be handled.
                 # HACK: We are doing this here and not in create above since the msg never is
                 # received by the browser that first time.
+                # Send information to the palette. This will trigger an event in the javascript
+                # within the html so that it can be handled.
+
                 palette = _ui.palettes.itemById(_PALETTE_ID)
                 if palette:
-                    jsonDataStr = '{{"sketchName": "{0}","units": "{1}"}}'.format(_selectedSketchName, _units)
-                    palette.sendInfoToHTML('init', jsonDataStr)
+                    sendInitInfoToHTML(palette)
 
             # Sent when the palette should be closed
             elif theAction == 'close':
@@ -367,70 +596,112 @@ class MyHTMLEventHandler(adsk.core.HTMLEventHandler):
                 if palette:
                     palette.isVisible = False
 
-                    sketchNameStr = theArgs['sketchName']
                     svgStr = unquote(theArgs['svg'])
-                    svgWidth = float(theArgs['width'] or 15)
-                    svgHeight = float(theArgs['height'] or 10)
 
                     # Save the SVG to a temp file            
                     fp = tempfile.NamedTemporaryFile(mode='w', suffix='.svg', delete=False)
                     fp.writelines(svgStr)
                     fp.close()
-                    svgFilePath = fp.name
-                    print ("Generated temporary SVG file: " + svgFilePath)
+                    _svgFilePath = fp.name
+                    print ("Generated temporary SVG file: " + _svgFilePath)
 
-                    # Either an existing sketch has been selected in the dialog or the
-                    # user has specified the name in the Voronoi editor.  This can be
-                    # either an existing sketch name or a new name to indicate to
-                    # create a new sketch.
-                    if sketchNameStr != None and sketchNameStr != '':
-                        if _selectedSketchName != sketchNameStr:
-                            _selectedSketchName = sketchNameStr    # use this sketch (might need to create)
-
-                    # Get the specified sketch or create one if none found
-                    design = _app.activeProduct
-                    rootComp = design.rootComponent
-
-                    theSketch = None
-
-                    if _selectedSketchName != '':
-                        theSketch = rootComp.sketches.itemByName(_selectedSketchName)
-                    
-                    if theSketch == None:
-                        # Which plane if no sketch?
-                        # xYConstructionPlane, xZConstructionPlane, yZConstructionPlane
-                        plane = rootComp.xYConstructionPlane
-                        if _constructionPlane == _CONSTRUCTION_PLANE_XZ:
-                            plane = rootComp.xZConstructionPlane
-                        elif _constructionPlane == _CONSTRUCTION_PLANE_YZ:
-                            plane = rootComp.yZConstructionPlane
-
-                        theSketch = rootComp.sketches.add(plane)
-
-                        _selectedSketchName = "Voronoi - " + theSketch.name
-                        theSketch.name = _selectedSketchName
-
-                    theSketch.isComputeDeferred = True  # Help to speed up import
-
-                    # Pos of import needs to be shifted up since SVG uses Y+ downward and F360 is Y+ upward.
-                    # Another oddity is that Fusion uses Y+ downard for positioning of SVG.  Therefore, we
-                    # need to negate the shift to move upward.
-                    # DEFECT: API call below is not honoring the xpos, ypos values.
-
-                    # import the temp svg file into the sketch.
-                    retValue = theSketch.importSVG(svgFilePath, 0, svgHeight, 1)    # (filePath, xPos, yPos, scale)
-
-                    # HACK: The importSVG() call is not honoring the yPos param.  Manually shift
-                    # the sketch here so it's in the correct location.
-                    moveSketch(theSketch, 0, svgHeight, 0)
-
-                    theSketch.isComputeDeferred = False
-
+                    # Get the command definition for the create voronoi core command which
+                    # will do the work.
+                    createVoronoiCoreCmdDef = _ui.commandDefinitions.itemById(_CREATE_VORONOI_CORE_CMD_ID)
+                    if createVoronoiCoreCmdDef != None:
+                        namedValues = adsk.core.NamedValues.create()
+                        namedValues.add('svgFilePath', adsk.core.ValueInput.createByString(_svgFilePath))
+                        createVoronoiCoreCmdDef.execute(namedValues)
+                    else:
+                        pass    # error!
         except:
             if _ui:
                 _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 
+# Event handler for the commandCreated event.
+class CreateVoronoiCommandCreatedEventHandler(adsk.core.CommandCreatedEventHandler):
+    def __init__(self):
+        super().__init__()
+    def notify(self, args):
+        eventArgs = adsk.core.CommandCreatedEventArgs.cast(args)
+        cmd = eventArgs.command
+
+        # Connect to the execute event.
+        onExecute = CreateVoronoiCommandExecuteHandler()
+        cmd.execute.add(onExecute)
+        _handlers.append(onExecute)
+
+
+# Event handler for the execute event.
+class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
+    def __init__(self):
+        super().__init__()
+    def notify(self, args):
+        eventArgs = adsk.core.CommandEventArgs.cast(args)
+
+        global _app, _svgFilePath
+
+        if _svgFilePath == '':
+            print("ERROR: Missing the SVG filepath")
+            return ()
+
+        # Get the specified sketch or create one if none found
+        design = _app.activeProduct
+        rootComp = design.rootComponent
+
+        theSketch = None
+
+        global _selectedSketchName
+        if _selectedSketchName != '':
+            theSketch = rootComp.sketches.itemByName(_selectedSketchName)
+        elif _profileSketchName != '':
+            theSketch = rootComp.sketches.itemByName(_profileSketchName)
+        
+        if theSketch == None:
+            # Which plane if no sketch?
+            # xYConstructionPlane, xZConstructionPlane, yZConstructionPlane
+            plane = rootComp.xYConstructionPlane
+            if _constructionPlane == _CONSTRUCTION_PLANE_XZ:
+                plane = rootComp.xZConstructionPlane
+            elif _constructionPlane == _CONSTRUCTION_PLANE_YZ:
+                plane = rootComp.yZConstructionPlane
+
+            theSketch = rootComp.sketches.add(plane)
+            theSketch.name = "Voronoi - " + theSketch.name
+
+        theSketch.isComputeDeferred = True  # Help to speed up import
+
+        # DEFECT: API call below is not honoring the xpos, ypos values.
+        # DEFECT: API call is not positioning and orienting the SVG the same as UI Insert SVG file does.
+        #xDirSketch = theSketch.xDirection   # Vector3D
+        #yDirSketch = theSketch.yDirection
+        #print("Sketch X Dir = {0},{1},{2}".format(xDirSketch.x,xDirSketch.y,xDirSketch.z))
+        #print("Sketch Y Dir = {0},{1},{2}".format(yDirSketch.x,yDirSketch.y,yDirSketch.z))
+
+        xPos = 0
+        yPos = 0
+
+        # TODO: If profile selected, need to shift to match lower left corner of profile.  See moveSketch() below.
+        if _profileSketchName != '' and _profileOrigin != None:
+            xPos = _profileOrigin.x
+            yPos = _profileOrigin.y
+
+        # import the temp svg file into the sketch.
+        retValue = theSketch.importSVG(_svgFilePath, xPos, yPos, 1)    # (filePath, xPos, yPos, scale)
+
+        # HACK: The importSVG() call is not honoring the yPos param.  Manually shift
+        # the sketch here so it's in the correct location.
+        # NOTE: See performance issue with moveSketch()
+        #global _height
+        #moveSketch(theSketch, 0, _height, 0)
+
+        # HACK: the insert from SVG fixes the curves.  Unfix so that
+        # they move when their associated points are moved.
+        setFixedSketchPoints(theSketch, False)
+
+        theSketch.isComputeDeferred = False
+ 
 def run(context):
     try:
         global _ui, _app
@@ -446,6 +717,16 @@ def run(context):
             # Connect to Command Created event.
             onCommandCreated = VoronoiCommandCreatedHandler()
             createVoronoiCmdDef.commandCreated.add(onCommandCreated)
+            _handlers.append(onCommandCreated)
+        
+        # Add a command that will create the Voronoi.
+        createVoronoiCoreCmdDef = _ui.commandDefinitions.itemById(_CREATE_VORONOI_CORE_CMD_ID)
+        if not createVoronoiCoreCmdDef:
+            createVoronoiCoreCmdDef = _ui.commandDefinitions.addButtonDefinition(_CREATE_VORONOI_CORE_CMD_ID, 'Create Voronoi', 'Generates a voronoi sketch\n', './/resources')
+            
+            # Connect to Command Created event.
+            onCommandCreated = CreateVoronoiCommandCreatedEventHandler()
+            createVoronoiCoreCmdDef.commandCreated.add(onCommandCreated)
             _handlers.append(onCommandCreated)
         
         # Get the CREATE panel in the MODEL workspace. 
@@ -485,6 +766,10 @@ def stop(context):
         cmdDef = _ui.commandDefinitions.itemById(_CREATE_VORONOI_CMD_ID)
         if cmdDef:
             cmdDef.deleteMe() 
+        
+        cmdDef = _ui.commandDefinitions.itemById(_CREATE_VORONOI_CORE_CMD_ID)
+        if cmdDef:
+            cmdDef.deleteMe()
     except:
         if _ui:
             _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))

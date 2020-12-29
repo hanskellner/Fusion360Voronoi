@@ -35,15 +35,28 @@ $(function() {
     // Which units we support.  Note that Centimeters is the default for the
     // Fusion 360 API.  THerefore, that's what is used here.
     var UNITS = {
-        Inches: 0,
-        Centimeters: 1
+        Inches: 'in',
+        Centimeters: 'cm'
     }
 
+    //var TEST_PROFILE = '[[{"x":"12.7","y":"7.62"}, {"x":"12.7","y":"7.82"}, {"x":"12.68","y":"8.02"}, {"x":"12.66","y":"8.219"}, {"x":"12.64","y":"8.417"}, {"x":"12.6","y":"8.614"}, {"x":"12.56","y":"8.809"}, {"x":"12.51","y":"9.002"}, {"x":"12.45","y":"9.194"}, {"x":"12.38","y":"9.383"}, {"x":"12.31","y":"9.569"}, {"x":"12.23","y":"9.752"}, {"x":"12.14","y":"9.932"}, {"x":"12.05","y":"10.11"}, {"x":"11.95","y":"10.28"}, {"x":"11.84","y":"10.45"}, {"x":"11.73","y":"10.61"}, {"x":"11.6","y":"10.77"}, {"x":"11.48","y":"10.93"}, {"x":"11.34","y":"11.08"}, {"x":"11.2","y":"11.22"}, {"x":"11.06","y":"11.36"}, {"x":"10.91","y":"11.49"}, {"x":"10.76","y":"11.62"}, {"x":"10.6","y":"11.74"}, {"x":"10.43","y":"11.85"}, {"x":"10.26","y":"11.96"}, {"x":"10.09","y":"12.06"}, {"x":"9.914","y":"12.15"}, {"x":"9.733","y":"12.24"}, {"x":"9.55","y":"12.32"}, {"x":"9.363","y":"12.39"}, {"x":"9.174","y":"12.46"}, {"x":"8.983","y":"12.51"}, {"x":"8.789","y":"12.56"}, {"x":"8.594","y":"12.61"}, {"x":"8.397","y":"12.64"}, {"x":"8.198","y":"12.67"}, {"x":"7.999","y":"12.69"}, {"x":"7.8","y":"12.7"}, {"x":"7.6","y":"12.7"}, {"x":"7.4","y":"12.7"}, {"x":"7.2","y":"12.68"}, {"x":"7.001","y":"12.66"}, {"x":"6.803","y":"12.63"}, {"x":"6.606","y":"12.6"}, {"x":"6.411","y":"12.55"}, {"x":"6.218","y":"12.5"}, {"x":"6.027","y":"12.44"}, {"x":"5.838","y":"12.38"}, {"x":"5.652","y":"12.3"}, {"x":"5.47","y":"12.22"}, {"x":"5.29","y":"12.13"}, {"x":"5.114","y":"12.04"}, {"x":"4.942","y":"11.94"}, {"x":"4.774","y":"11.83"}, {"x":"4.611","y":"11.71"}, {"x":"4.452","y":"11.59"}, {"x":"4.298","y":"11.46"}, {"x":"4.15","y":"11.33"}, {"x":"4.006","y":"11.19"}, {"x":"3.869","y":"11.05"}, {"x":"3.737","y":"10.9"}, {"x":"3.611","y":"10.74"}, {"x":"3.491","y":"10.58"}, {"x":"3.378","y":"10.41"}, {"x":"3.271","y":"10.25"}, {"x":"3.171","y":"10.07"}, {"x":"3.078","y":"9.895"}, {"x":"2.992","y":"9.715"}, {"x":"2.913","y":"9.531"}, {"x":"2.842","y":"9.344"}, {"x":"2.777","y":"9.155"}, {"x":"2.721","y":"8.963"}, {"x":"2.672","y":"8.769"}, {"x":"2.63","y":"8.574"}, {"x":"2.597","y":"8.376"}, {"x":"2.571","y":"8.178"}, {"x":"2.553","y":"7.979"}, {"x":"2.542","y":"7.779"}, {"x":"2.54","y":"7.62"}], [{"x":"2.54","y":"7.62"}, {"x":"2.54","y":"2.54"}], [{"x":"2.54","y":"2.54"}, {"x":"12.7","y":"2.54"}], [{"x":"12.7","y":"2.54"}, {"x":"12.7","y":"7.62"}]]';
+    var TEST_INIT_FROM_FUSION = '{"units": "in", "width": "10.0", "height": "7.5", "profile": []}';
+    
     /////////////////////////////////////////////////////////////////////////
 
-    var _units = UNITS.Inches;
-    var _sketchName = '';
+    var _profileData = [];      // Array of arrays.  Each child array is a path
+    var _profileBounds = {
+        xmin: Infinity,
+        ymin: Infinity,
+        xmax: -Infinity,
+        ymax: -Infinity
+    }
+    var _profilePath = null;    // Paper Path
 
+    // TESTING PROFILE
+    //var jsonProfile = JSON.parse(TEST_PROFILE);
+    //setPropertyProfile(jsonProfile);
+    
     /////////////////////////////////////////////////////////////////////////
 
     function inches2pixels(val) { return (val * 96); }
@@ -67,13 +80,18 @@ $(function() {
         sendEventCloseDialogToFusion();
     });
 
+    function showDebugText(str) {
+        $('#debug_text').html(str);
+    }
+
     // For the cell count range
     const $valueSpanCellCount = $('#cellCountValueSpan');
     const $valueCellCount = $('#cellCountRange');
     $valueSpanCellCount.html($valueCellCount.val());
     $valueCellCount.on('input change', () => {
         $valueSpanCellCount.html($valueCellCount.val());
-        drawVoronoi();
+        generateCells();
+        draw();
     });
 
     function propertyCellCount(defaultCount = 100) {
@@ -92,7 +110,7 @@ $(function() {
     $valueSpanCellScale.html($valueCellScale.val());
     $valueCellScale.on('input change', () => {
         $valueSpanCellScale.html($valueCellScale.val());
-        drawVoronoi();
+        draw();
     });
 
     function propertyCellScale(defaultPct = 0.9) {
@@ -104,7 +122,7 @@ $(function() {
     const $valueCellEdgeStyle = $('#edgeStyleSelect');
     $valueCellEdgeStyle.change(() => {
         //var style = this.value;
-        drawVoronoi();
+        draw();
     });
 
     const CellEdgeStyle = {
@@ -126,110 +144,180 @@ $(function() {
         return style;
     }
 
-    // Units indicator
-    const $valueUnitsIndicator = $('.units');
-    function updatePropertyUnitsIndicator() {
-        let formVal = (_units === UNITS.Inches) ? '(inches)' : '(cm)';
-        $valueUnitsIndicator.text(formVal);
-    }
-
     // Page width
-    var _pageWidth = DEFAULT_PAGE_WIDTH_METRIC; // internally always cms
-
-    const $valuePageWidth = $('#pageWidthInput');
-    $valuePageWidth.on('input change', () => {
-        var newVal = Number($valuePageWidth.val());
-        if (newVal !== NaN && newVal > 0) {
-            resizeVoronoi(true);
-        }
-    });
+    var _pageWidth = DEFAULT_PAGE_WIDTH_METRIC; // internally always centimeters
 
     // Return the page width (always in cms)
     function propertyPageWidth() {
-        var val = Number($valuePageWidth.val());
-        if (val === NaN || val <= 0) {
-            return (_units === UNITS.Inches) ? inches2cms(_pageWidth) : _pageWidth; // Incoming is invalid so use current value
-        }
-        else {
-            _pageWidth = (_units === UNITS.Inches) ? inches2cms(val) : val;
-            return _pageWidth;
-        }
+        return _pageWidth;
     }
 
-    // Set the page width (always in cms)
+    // Set the page width (always centimeters)
+    // Callers must call resizeCanvas() afterwards.
     function setPropertyPageWidth(val) {
         _pageWidth = val;
-
-        // Form display value in selected units
-        let formVal = (_units === UNITS.Inches) ? cms2inches(val) : val;
-        $valuePageWidth.val(Number(formVal.toFixed(2)));
+        //resizeCanvas();
     }
 
     // Page height
-    var _pageHeight = DEFAULT_PAGE_HEIGHT_METRIC; // internally always in cms
-
-    const $valuePageHeight = $('#pageHeightInput');
-    $valuePageHeight.on('input change', () => {
-        var newVal = Number($valuePageHeight.val());
-        if (newVal !== NaN && newVal > 0) {
-            resizeVoronoi(true);
-        }
-    });
+    var _pageHeight = DEFAULT_PAGE_HEIGHT_METRIC; // internally always in centimeters
 
     // Return the page height (always in cms)
     function propertyPageHeight() {
-        var val = Number($valuePageHeight.val());
-        if (val === NaN || val <= 0) {
-            return (_units === UNITS.Inches) ? inches2cms(_pageHeight) : _pageHeight; // Incoming is invalid so use current value
+        return _pageHeight;
+    }
+
+    // Set the page height (always centimeters)
+    // Callers must call resizeCanvas() afterwards.
+    function setPropertyPageHeight(val) {
+        _pageHeight = val;
+        //resizeCanvas();
+    }
+
+    // Padding between border and voronoi (centimeters)
+    var _padding = 0;
+
+    const $valuePagePadding = $('#pagePaddingInput');
+    $valuePagePadding.on('input change', () => {
+        var newVal = propertyPagePadding();
+        
+        // Make sure padding isn't too large
+        var pageWidth = propertyPageWidth();
+        var pageHeight = propertyPageHeight();
+        if (pageWidth > pageHeight) {
+            newVal = Math.min(pageHeight/4, newVal);
         }
         else {
-            _pageHeight = (_units === UNITS.Inches) ? inches2cms(val) : val;
-            return _pageHeight;
+            newVal = Math.min(pageWidth/4, newVal);
+        }
+    
+        if (newVal !== _padding) {
+            console.log(newVal);
+            _padding = newVal;
+            generateCells(true);    // Force new cells to generate
+            draw();
+        }
+        else {
+            setPropertyPagePadding(newVal); // In case set larger than allowed
+        }
+    });
+
+    // Return the page padding (always in cms)
+    function propertyPagePadding() {
+        var val = Number($valuePagePadding.val());
+        if (val === NaN || val < 0) {
+            return _padding; // Incoming is invalid so use current value
+        }
+        else {
+            // REVIEW: Set the local var _padding too?
+            return (propertyUnits() === UNITS.Inches) ? inches2cms(val) : val;  // Need to convert to cms internally
         }
     }
 
-    // Set the page height (always in cms)
-    function setPropertyPageHeight(val) {
-        _pageHeight = val;
+    // Set the page padding (always in cms)
+    function setPropertyPagePadding(val) {
+        _padding = val; // TODO: Validate
 
         // Form display value in selected units
-        let formVal = (_units === UNITS.Inches) ? cms2inches(val) : val;
-        $valuePageHeight.val(Number(formVal.toFixed(2)));
+        let formVal = (propertyUnits() === UNITS.Inches) ? cms2inches(val) : val;
+        $valuePagePadding.val(Number(formVal.toFixed(2)));
+    }
+
+    // Units indicator
+    const $valueUnitsIndicator = $('.units');
+    function updatePropertyUnitsIndicator() {
+        let formVal = (propertyUnits() === UNITS.Inches) ? '(inches)' : '(cm)';
+        $valueUnitsIndicator.text(formVal);
     }
 
     // Units
+    var _units = UNITS.Centimeters;
+
     function propertyUnits() {
         return _units;
     }
 
-    function setPropertyUnits(val, force = false) {
-        if (val === UNITS.Inches || val === UNITS.Centimeters) {
-            if (force || _units != val) {
-                _units = val;
-                updatePropertyUnitsIndicator();
+    function setPropertyUnits(val) {
+        if (val == 'in' || val != 'ft')
+            _units = UNITS.Inches;
+        else
+            _units = UNITS.Centimeters;
 
-                // Set defaults for the unit
-                switch (_units) {
-                    case UNITS.Inches:
-                        setPropertyPageWidth(inches2cms(DEFAULT_PAGE_WIDTH_STANDARD));
-                        setPropertyPageHeight(inches2cms(DEFAULT_PAGE_HEIGHT_STANDARD));
-                        break
-                    case UNITS.Centimeters:
-                        setPropertyPageWidth(DEFAULT_PAGE_WIDTH_METRIC);
-                        setPropertyPageHeight(DEFAULT_PAGE_HEIGHT_METRIC);
-                        break
+        updatePropertyUnitsIndicator();
+    }
+
+    updatePropertyUnitsIndicator();
+
+    // Profile
+    function propertyProfile() {
+        return _profileData;
+    }
+
+    function setPropertyProfile(profile) {
+        var isClippingDisabled = true;
+
+        if (profile !== undefined && profile !== null) {
+            _profileData = profile;
+
+            // Calc bouds of profile
+            _profileBounds.xmin = Infinity;
+            _profileBounds.ymin = Infinity;
+            _profileBounds.xmax = -Infinity;
+            _profileBounds.ymax = -Infinity;
+
+            if (_profileData.length > 0) {
+                isClippingDisabled = false;
+
+                for (var iPath = 0; iPath < _profileData.length; ++iPath) {
+                    var path = _profileData[iPath];
+                    for (var iPt = 0; iPt < path.length; ++iPt) {
+                        var x = Number(path[iPt].x)
+                        var y = Number(path[iPt].y)
+                        if (x < _profileBounds.xmin) _profileBounds.xmin = x;
+                        if (y < _profileBounds.ymin) _profileBounds.ymin = y;
+                        if (x > _profileBounds.xmax) _profileBounds.xmax = x;
+                        if (y > _profileBounds.ymax) _profileBounds.ymax = y;
+                    }
                 }
             }
         }
+
+        $valueClipCellsOutside.prop( "disabled", isClippingDisabled );
+        $valueClipCellsIntersect.prop( "disabled", isClippingDisabled );
     }
 
-    setPropertyUnits(propertyUnits(), true);
+    // Clip Outside and Intersect Profile
+
+    const $valueClipCellsOutside = $('#clipCellsOutsideCheckbox');
+    $valueClipCellsOutside.change( () => {
+        draw();
+    });    
+
+    function propertyClipCellsOutside() {
+        return ($valueClipCellsOutside.is(":checked"));
+    }
+
+    function setPropertyClipCellsOutside(val) {
+        $valueClipCellsOutside.prop( "checked", val );
+    }
+
+    const $valueClipCellsIntersect = $('#clipCellsIntersectCheckbox');
+    $valueClipCellsIntersect.change( () => {
+        draw();
+    });    
+
+    function propertyClipCellsIntersect() {
+        return ($valueClipCellsIntersect.is(":checked"));
+    }
+
+    function setPropertyClipCellsIntersect(val) {
+        $valueClipCellsIntersect.prop( "checked", val );
+    }
 
     // Show Page Border
-
     const $valueShowPageBorder = $('#pageBorderCheckbox');
     $valueShowPageBorder.change( () => {
-        drawVoronoi();
+        draw();
     });    
 
     function propertyShowPageBorder() {
@@ -254,14 +342,6 @@ $(function() {
         return (val !== NaN && val !== 0) ? val/100 : defaultScale;
     }
 
-    // Sketch name
-    function propertySketchName() {
-        return _sketchName;
-    }
-
-    function setPropertySketchName(name) {
-        _sketchName = name;
-    }
 
     /////////////////////////////////////////////////////////////////////////
     // Random Numbers
@@ -370,13 +450,20 @@ $(function() {
     var maxY = -Infinity;
 
     function generateCellSites(count) {
-        // TODO: Make this a user setting
-        var padding = 5;    // px
 
-        var pageWidthInner = (cms2pixels(propertyPageWidth()) - 2*padding);
-        var pageHeightInner = (cms2pixels(propertyPageHeight()) - 2*padding);
+        var pageWidth = cms2pixels(propertyPageWidth());
+        var pageHeight = cms2pixels(propertyPageHeight());
+        var padding = cms2pixels(propertyPagePadding());
 
-        //console.log("Page Width = " + cms2pixels(propertyPageWidth()) + " Height = " + cms2pixels(propertyPageHeight()));
+        if (pageWidth > pageHeight)
+            padding = Math.min(pageHeight/4, padding);
+        else
+            padding = Math.min(pageWidth/4, padding);
+
+        var pageWidthInner = (pageWidth - 2*padding);
+        var pageHeightInner = (pageHeight - 2*padding);
+
+        //console.log("Page Width = " + pageWidth + " Height = " + pageHeight);
         //console.log("Page Inner Width = " + pageWidthInner + " Height = " + pageHeightInner);
 
         // Create a set of random cell sites.  These are center points of each cell.
@@ -441,7 +528,7 @@ $(function() {
         }
     }
 
-    function createPath(points, center) {
+    function createVoronoiPath(points, center) {
 
         var path = null;
         var minDistance = Infinity; // Used for shapes
@@ -532,8 +619,55 @@ $(function() {
     }
 
     function renderDiagram(sites) {
+
         paper.project.activeLayer.removeChildren();
         
+        // Create profile path
+        var profile = propertyProfile();
+        if (profile.length > 0) {
+            //var width = cms2pixels(_profileBounds.xmax - _profileBounds.xmin);
+            var height = cms2pixels(_profileBounds.ymax - _profileBounds.ymin);
+
+            // NOTE: Assumes the profile paths are sorted clockwise or counterclockwise
+            _profilePath = new paper.Path();
+            _profilePath.strokeColor = 'blue';
+            _profilePath.closed = false;    // REVIEW:
+
+            var pxLast = null;
+            var pyLast = null;
+
+            for (var iPath = 0; iPath < profile.length; ++iPath) {
+                var profPath = profile[iPath];
+                for (var iPt = 0; iPt < profPath.length; ++iPt) {
+                    var px = cms2pixels(Number(profPath[iPt].x)) - cms2pixels(_profileBounds.xmin);
+                    var py = height - (cms2pixels(Number(profPath[iPt].y)) - cms2pixels(_profileBounds.ymin));   // Flip because Paper Y+ downward
+                    if (pxLast == null) {
+                        pxLast = px;
+                        pyLast = py;
+                        _profilePath.add(new paper.Point(px, py));
+                    }
+                    else if (px != pxLast || py != pyLast) {
+                        _profilePath.add(new paper.Point(px, py));
+                        pxLast = px;
+                        pyLast = py;
+                    }
+                }
+            }
+        }
+        else {
+            _profilePath = null;
+        }
+
+        // Will we need to clip voronoi cells outside and/or intersect profile?
+        var clipCellsOutside = propertyClipCellsOutside() && (_profilePath != null);
+        var clipCellsIntersect = propertyClipCellsIntersect() && (_profilePath != null);
+
+        // Create border path
+        if (propertyShowPageBorder()) {
+            var pathBounds = new paper.Path.Rectangle(new paper.Point(0,0), new paper.Point(cms2pixels(propertyPageWidth()), cms2pixels(propertyPageHeight())));
+            pathBounds.strokeColor = 'darkgray';
+        }
+
         //console.time('delaunay');
         var delaunay = d3.Delaunay.from(sites);
         //console.timeEnd('delaunay');
@@ -555,18 +689,30 @@ $(function() {
                         points.push(new paper.Point(cellPoly[j][0], cellPoly[j][1]));
                     }
 
-                    createPath(points, sites[i]);
+                    var newPath = createVoronoiPath(points, sites[i]);
+
+                    // Need to clip cell?
+                    var removeCell = false;
+
+                    if (clipCellsOutside) {
+                        // If cell is outside profile then toss.
+                        removeCell |= (!_profilePath.intersects(newPath) && !_profilePath.contains(newPath.position));
+                    }
+
+                    if (newPath != null && clipCellsIntersect) {
+                        // If cell intersects profile then toss.
+                        removeCell |= _profilePath.intersects(newPath);
+                    }
+
+                    if (removeCell) {
+                        newPath.remove();
+                        newPath = null;
+                    }
                 }
             }
-
-            // Draw page bounds
-            if (propertyShowPageBorder()) {
-                var pathBounds = new paper.Path.Rectangle(new paper.Point(0,0), new paper.Point(cms2pixels(propertyPageWidth()), cms2pixels(propertyPageHeight())));
-                pathBounds.strokeColor = 'darkgray';
-            }
-
-            paper.view.draw();
         }
+
+        paper.view.draw();
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -590,18 +736,18 @@ $(function() {
     var cellSites = [];
     var cellSitesCount = 0;
 
-    function drawVoronoi(forceCellUpdate = false) {
-
-        ctx.setTransform(1, 0, 0, 1, 0, 0); // reset scale
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+    function generateCells(forceCellUpdate = false) {
         // Need to update cell sites?
         var newCellSitesCount = propertyCellCount();
         if (forceCellUpdate || cellSitesCount !== newCellSitesCount) {
             cellSites = generateCellSites(newCellSitesCount);
             cellSitesCount = cellSites.length;
         }
+    }
 
+    function draw() {
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // reset scale
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         renderDiagram(cellSites);
     }
 
@@ -634,6 +780,8 @@ $(function() {
         canvas.width = pageWidthInPixels * scalex;
         canvas.height = pageHeightInPixels * scaley;
 
+        console.log("Canvas size = " + canvas.width + " x " + canvas.height );
+
         // TODO: SEE: https://matthiasberth.com/tech/stable-zoom-and-pan-in-paperjs
         //paper.project.activeLayer.position = paper.view.bounds.center;
     }
@@ -651,30 +799,41 @@ $(function() {
     canvas.width = cms2pixels(propertyPageWidth());
     canvas.height = cms2pixels(propertyPageHeight());
 
-    console.log("Canvas size = " + canvas.width + " x " + canvas.height );
-
     // Create an empty project and a view for the canvas.  And do it
     // after we've set the canvas size.
     paper.setup(canvas);
+
+    // Reset for a new diagram.  Callers must call draw() afterwards.
+    function reset() {
+        setPropertyUnits(UNITS.Centimeters);
+        setPropertyPageWidth(DEFAULT_PAGE_WIDTH_METRIC);
+        setPropertyPageHeight(DEFAULT_PAGE_HEIGHT_METRIC);
+        setPropertyProfile([]);
+        resizeCanvas();
+    }
+
+    // This can't be called by the resize event since it will pass an object as a param which
+    // will be used as the forceCellUpdate param.
+    function update(forceCellUpdate = false) {
+        resizeCanvas();
+        generateCells(forceCellUpdate);
+        draw();
+    }
 
     // resize the canvas to match browser window
     window.addEventListener('resize', resizeHandler, false);
 
     function resizeHandler() {
-        resizeVoronoi();
+        update();
     }
 
-    // This can't be called by the resize event since it will pass an object as a param which
-    // will be used as the forceCellUpdate param.
-    function resizeVoronoi(forceCellUpdate = false) {
-        resizeCanvas();
-        drawVoronoi(forceCellUpdate);
-    }
-
-    resizeVoronoi();    // Show me the money!
+    update(true);   // Update and draw the diagram
 
     // Queue up event to tell Fusion we are alive
     setTimeout(sendEventStartedToFusion, 250);
+
+    // TESTING
+    handleActionStarted(TEST_INIT_FROM_FUSION);
 
     /////////////////////////////////////////////////////////////////////////
     // Fusion 360 Add-In Support Section
@@ -682,25 +841,27 @@ $(function() {
     function handleActionStarted(jsonStr) {
         var jsonData = JSON.parse(jsonStr);
         if (jsonData) {
-            // Look for properties
-            if (typeof jsonData.sketchName !== 'undefined') {
-                setPropertySketchName(jsonData.sketchName);
-            }
+            // Reset to defaults
+            reset();
 
             if (typeof jsonData.units !== 'undefined') {
-                if (jsonData.units === 'in')
-                    setPropertyUnits(UNITS.Inches);
-                else if (jsonData.units === 'cm')
-                    setPropertyUnits(UNITS.Centimeters);
+                setPropertyUnits(jsonData.units);
             }
 
             if (typeof jsonData.width !== 'undefined') {
-                setPropertyPageWidth(jsonData.width);
+                setPropertyPageWidth(jsonData.width);       // centimeters
             }
 
             if (typeof jsonData.height !== 'undefined') {
-                setPropertyPageHeight(jsonData.height);
+                setPropertyPageHeight(jsonData.height);     // centimeters
             }
+
+            if (typeof jsonData.profile !== 'undefined') {
+                setPropertyProfile(jsonData.profile);
+            }
+
+            // Now update the diagram
+            update(true); 
         }
         else {
             console.log("Failed to parse json: " + jsonStr);
@@ -737,29 +898,41 @@ $(function() {
         var prevScale = propertyViewScale();
         unscaleView();
 
+        // HACK: Paper is Y+ downward and Fusion Y+ upward
+        // Flip the diagram before we generate SVG
+
+        var tyPrev = paper.view.matrix.ty;
+        paper.view.matrix.ty = -1 * cms2pixels(propertyPageHeight());
+
+        // Hide profile
+        if (_profilePath != null) {
+            _profilePath.remove();
+        }
+
         // Get the SVG
         var svg = paper.project.exportSVG({asString:true});
+
+        // Restore profile
+        if (_profilePath != null) {
+            paper.project.activeLayer.addChild(_profilePath);
+        }
+
+        // Restore scale
+        paper.view.matrix.ty = tyPrev;
+        scaleView(prevScale);
+
         if (svg === null || svg === '') {
             console.log("No SVG generated.");
             return;
         }
 
-        // Restore scale
-        scaleView(prevScale);
-
         var svgString = encodeURIComponent(svg);
-        var svgWidth = propertyPageWidth();
-        var svgHeight = propertyPageHeight();
-        var sketchName = propertySketchName('');
 
         // Package up data as JSON
         var jsonDataStr = `{
             "action": "publish",
             "arguments": {
-                "sketchName" : "${sketchName}",
-                "svg" : "${svgString}",
-                "width": "${svgWidth}",
-                "height": "${svgHeight}"
+                "svg" : "${svgString}"
             }
         }`;
 

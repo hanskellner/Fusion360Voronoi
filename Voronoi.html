@@ -43,26 +43,6 @@
             <div class="sidebar-content">
 
                 <form>
-                    <div class="form-group form-row mb-0">
-                        <label for="pageWidthInput" class="col-sm-6 col-form-label">Width</label>
-                        <div class="col-sm-5">
-                            <input type="number" class="form-control" id="pageWidthInput" data-bind="value:pageWidthInput" min="1" value="6"  aria-describedby="pageWidthHelp">
-                        </div>
-                    </div>
-                    <div class="form-row ml-0 mt-0 mb-2">
-                        <small id="pageWidthHelp" class="form-text text-muted">Width of the sketch <span class="units"></span></small>
-                    </div>
-                    
-                    <div class="form-group form-row mb-0">
-                        <label for="pageHeightInput" class="col-sm-6 col-form-label">Height</label>
-                        <div class="col-sm-5">
-                            <input type="number" class="form-control" id="pageHeightInput" data-bind="value:pageHeightInput" min="1" value="4" aria-describedby="pageHeightHelp">
-                        </div>
-                    </div>
-                    <div class="form-row ml-0 mt-0 mb-2">
-                        <small id="pageHeightHelp" class="form-text text-muted">Height of the sketch <span class="units"></span></small>
-                    </div>
-
                     <div class="form-group">
                         <label for="edgeStyleSelect">Cell Style</label>
                         <select class="form-control" id="edgeStyleSelect" aria-describedby="edgeStyleHelp">
@@ -77,7 +57,7 @@
                             <option value="8">Hexagon</option>
                             <option value="9">Octagon</option>
                         </select>
-                        <small id="edgeStyleHelp" class="form-text text-muted">Style of the cell edges</small>
+                        <small id="edgeStyleHelp" class="form-text text-muted">Set edges or symbol cell style</small>
                     </div>
                     
                     <div class="form-group">
@@ -104,12 +84,42 @@
                     
                     <div class="form-group form-row mb-0">
                         <div class="col-sm-1 ml-4 mr-0 px-0">
-                            <input type="checkbox" class="form-check-input" id="pageBorderCheckbox" data-bind="value:pageBorderCheckbox" aria-describedby="pageBorderhHelp">
+                            <input type="checkbox" class="form-check-input" id="clipCellsOutsideCheckbox" data-bind="value:clipCellsOutsideCheckbox" aria-describedby="clipCellsOutsideHelp" checked disabled="disable">
                         </div>
-                        <label for="pageBorderCheckbox" class="col-sm-6 form-check-label">Draw Border</label>
+                        <label for="clipCellsOutsideCheckbox" class="col-sm-8 form-check-label pl-0">Clip Outside</label>
                     </div>
                     <div class="form-row ml-0 mt-0 mb-2">
-                        <small id="pageBorderhHelp" class="form-text text-muted">Draw the page border</small>
+                        <small id="clipCellsOutsideHelp" class="form-text text-muted">Clip cells outside of profile</small>
+                    </div>
+
+                    <div class="form-group form-row mb-0">
+                        <div class="col-sm-1 ml-4 mr-0 px-0">
+                            <input type="checkbox" class="form-check-input" id="clipCellsIntersectCheckbox" data-bind="value:clipCellsIntersectCheckbox" aria-describedby="clipCellsIntersectHelp" checked disabled="disable">
+                        </div>
+                        <label for="clipCellsIntersectCheckbox" class="col-sm-8 form-check-label pl-0">Clip Intersecting</label>
+                    </div>
+                    <div class="form-row ml-0 mt-0 mb-2">
+                        <small id="clipCellsIntersectHelp" class="form-text text-muted">Clip cells intersecting profile</small>
+                    </div>
+
+                    <div class="form-group form-row mb-0">
+                        <div class="col-sm-1 ml-4 mr-0 px-0">
+                            <input type="checkbox" class="form-check-input" id="pageBorderCheckbox" data-bind="value:pageBorderCheckbox" aria-describedby="pageBorderHelp">
+                        </div>
+                        <label for="pageBorderCheckbox" class="col-sm-8 form-check-label pl-0">Add Border</label>
+                    </div>
+                    <div class="form-row ml-0 mt-0 mb-2">
+                        <small id="pageBorderHelp" class="form-text text-muted">Add the page border</small>
+                    </div>
+
+                    <div class="form-group form-row mb-0">
+                        <label for="pagePaddingInput" class="col-sm-6 col-form-label">Padding</label>
+                        <div class="col-sm-5">
+                            <input type="number" class="form-control" id="pagePaddingInput" data-bind="value:pagePaddingInput" min="0" value="0" step="0.1" aria-describedby="pagePaddingHelp">
+                        </div>
+                    </div>
+                    <div class="form-row ml-0 mt-0 mb-2">
+                        <small id="pagePaddingHelp" class="form-text text-muted">Padding around voronoi <span class="units"></span></small>
                     </div>
 
                     <div class="form-group">
@@ -154,6 +164,7 @@
             <div class="m-3">
                 <canvas id="voronoiCanvas"></canvas>
                 <p style="text-align: center">This is the <a href="https://github.com/hanskellner/Fusion360Voronoi" target="_blank">Voronoi</a> add-in for Fusion 360 // By <a href="https://twitter.com/hanskellner" target="_blank">@hanskellner</a></p>
+                <p id="debug_text"></p>
             </div>
         </div>
     </div>
@@ -163,7 +174,6 @@
     <script type="text/javascript" src="dist/bootstrap-4.5.3-dist/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript" src="dist/paper/paper-full.min.js"></script>
     <script type="text/javascript" src="dist/d3-delaunay/d3-delaunay.min.js"></script>
-
     <script type="text/javascript" src="js/voronoi-editor.js"></script>
 </body>
 
