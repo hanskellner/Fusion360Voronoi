@@ -150,12 +150,9 @@ https://autode.sk/2S2jpR5
 
 Other examples posted on my [Fusion 360 project gallery](https://fusion360.autodesk.com/projects/voronoi-script).
 
-## Issues
+## TODO and Issues
 
 - Inserting a voronoi diagram with many cells may cause Fusion 360 to hang for a long time.  There may be no workaround on the add-in side.
-
-## TODO and ISSUES
-
 - Re-enable Llloyd's Relaxation
 - When using a profile, the voronoi diagram will not be inserted at the offset of the profile.  The workaround is to:
     1. Edit the sketch containing the voronoi
