@@ -167,6 +167,7 @@ This software makes use of: https://github.com/d3/d3-delaunay
 Thanks for suggestions from various folks:
 
 - [LeonFedotov](https://github.com/LeonFedotov)
+- [wassfila](https://github.com/wassfila)
 - Sualp O.
 - Brian G.
 - All others I might have missed.
