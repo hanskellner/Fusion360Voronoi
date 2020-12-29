@@ -711,7 +711,7 @@ def run(context):
         # Add a command that displays the panel.
         createVoronoiCmdDef = _ui.commandDefinitions.itemById(_CREATE_VORONOI_CMD_ID)
         if not createVoronoiCmdDef:
-            createVoronoiCmdDef = _ui.commandDefinitions.addButtonDefinition(_CREATE_VORONOI_CMD_ID, 'Create Voronoi', 'Generates a voronoi sketch\n', './/resources')
+            createVoronoiCmdDef = _ui.commandDefinitions.addButtonDefinition(_CREATE_VORONOI_CMD_ID, 'Voronoi Sketch Generator', 'Generates a voronoi sketch\n', './/resources')
             createVoronoiCmdDef.toolClipFilename = './/resources//voronoi-tooltip.png'
             
             # Connect to Command Created event.
@@ -722,7 +722,7 @@ def run(context):
         # Add a command that will create the Voronoi.
         createVoronoiCoreCmdDef = _ui.commandDefinitions.itemById(_CREATE_VORONOI_CORE_CMD_ID)
         if not createVoronoiCoreCmdDef:
-            createVoronoiCoreCmdDef = _ui.commandDefinitions.addButtonDefinition(_CREATE_VORONOI_CORE_CMD_ID, 'Create Voronoi', 'Generates a voronoi sketch\n', './/resources')
+            createVoronoiCoreCmdDef = _ui.commandDefinitions.addButtonDefinition(_CREATE_VORONOI_CORE_CMD_ID, 'Create Voronoi', 'Creates the voronoi sketch\n', './/resources')
             
             # Connect to Command Created event.
             onCommandCreated = CreateVoronoiCommandCreatedEventHandler()

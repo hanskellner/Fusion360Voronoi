@@ -43,7 +43,7 @@ https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcartic
 
     ![Solid Create Dropdown](./images/SolidCreateDropDown.png)
 
-3. Click on the "Create Voronoi" menuitem or button.
+3. Click on the "Voronoi Sketch Generator" menuitem or button.
 
     ![Voronoi Menu Item](./images/VoronoiMenuItem.png)
 
@@ -105,7 +105,7 @@ It's also possible to select a profile on the planar face of a body.  Here's an 
 
 1. Create a new cylinder on the XY construction plane.  Make it 4in diameter and 1in tall.
 2. Create a new sketch on the top surface of the cylinder then click Finish Sketch.
-3. Run the Create Voronoi command.  The dialog should appear.
+3. Run the 'Voronoi Sketch Generator' command.  The dialog should appear.
 4. Move the cursor over the top of the cylinder.  The top face should highlight.  Click to select it.
 5. The dialog should now display '1 Selected' in the Sketch of Profile field.  Also, fields should now be visible showing the width and height of the profile.
     - Optionally, you can click the 'Use Profile Size' button to copy the profile dimension over to the voronoi dimensions.
