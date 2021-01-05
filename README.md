@@ -2,7 +2,15 @@
 
 ![Fusion 360 Voronoi](./resources/Voronoi-tooltip.png)
 
-This is an [Autodesk Fusion 360](http://fusion360.autodesk.com/) add-in for generating voronoi diagrams.  Once created, a voronoi diagram is inserted into a sketch and then may be used for creating or modifying models.
+This is an [Autodesk Fusion 360](http://fusion360.autodesk.com/) add-in for generating Voronoi diagrams.  Once created, a Voronoi diagram is inserted into a sketch and then may be used for creating or modifying models.
+
+It's possible to select an existing sketch, a sketch profile, or one of the (XY, XZ, YZ) construction planes as the target of the generated diagram.  When a sketch profile is selected, it will be used to define the bounds and to clip the generated diagram.
+
+Several styles of Voronoi diagrams may be created.  Each cell in a diagram has an outer edge.  The "edge style" may be specified as "Curves" or "Straight".  Selecting one of these styles will create a familiar style of Voronoi diagram.
+
+The other styles place symbols at each cell location.  For example, selecting the "Triangle" style will place a triangle at each cell location.  Note that this is still an experimental feature and being refined.
+
+See the "Usage" section for more information and help.
 
 ## Installation
 
@@ -132,7 +140,7 @@ At this point the palette will be appear and the circular profile contaning a vo
 
 ## Video Screencast 
 
-Please view the following screencast to see Voronoi in use:
+Please view the following screencast to see the Voronoi add-in in use (note: updated video coming soon):
 
 https://knowledge.autodesk.com/community/screencast/f3736c33-f135-481e-8d82-4a6fa9a56cd6
 
