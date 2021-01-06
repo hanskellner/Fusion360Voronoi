@@ -147,8 +147,8 @@ This setting for adjusting the 'Relaxation' is useful for normalizing the distan
 Here are views of a Voronoi after changing the setting to 0, 20, and 500.
 
 ![Relaxation 0 Curves](./images/VoronoiSketchGenerator-Relax0Curves.png)
-![Relaxation 20 Curves](./images/VoronoiSketchGenerator-Relax0Curves.png)
-![Relaxation 500 Curves](./images/VoronoiSketchGenerator-Relax0Curves.png)
+![Relaxation 20 Curves](./images/VoronoiSketchGenerator-Relax20Curves.png)
+![Relaxation 500 Curves](./images/VoronoiSketchGenerator-Relax500Curves.png)
 
 This setting is also helpful for the symbol styles.  For example, here are 'Stars' at different relaxation settings:
 
