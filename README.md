@@ -155,7 +155,7 @@ This setting is also helpful for the symbol styles.  For example, here are 'Star
 ![Relaxation 20 Stars](./images/VoronoiSketchGenerator-Relax20Stars.png)
 ![Relaxation 500 Stars](./images/VoronoiSketchGenerator-Relax500Stars.png)
 
-Background information on the technique: https://en.wikipedia.org/wiki/Lloyd%27s_algorithm
+More information about the algorithm on [Wikipedia](https://en.wikipedia.org/wiki/Lloyd%27s_algorithm).
 
 ## Video Screencast 
 
@@ -194,13 +194,8 @@ This software makes use of: https://github.com/d3/d3-delaunay
 Thanks for suggestions from various folks:
 
 - [LeonFedotov](https://github.com/LeonFedotov)
+    Kindly submitted the original support Lloyd's relaxation algorithm. The support has now been replaced with the version that's part of the D3 code.
 - [wassfila](https://github.com/wassfila)
 - Sualp O.
 - Brian G.
 - All others I might have missed.
-
-### Lloyd's Relaxation Support
-
-Github user [LeonFedotov](https://github.com/LeonFedotov) kindly submitted the changes to support Lloyd's relaxation algorithm.
-
-More information about the algorithm on [Wikipedia](https://en.wikipedia.org/wiki/Lloyd%27s_algorithm).
