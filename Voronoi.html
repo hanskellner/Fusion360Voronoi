@@ -81,6 +81,17 @@
                         </div>
                         <small id="cellScaleHelp" class="form-text text-muted">Scale amount for cells</small>
                     </div>
+
+                    <div class="form-group">
+                        <label for="lloydsRange">Relaxation</label>
+                        <div class="d-flex justify-content-center">
+                            <div class="w-75">
+                                <input type="range" class="form-control custom-range" id="lloydsRange" min="0" max="1000" value="200" aria-describedby="lloydsHelp">
+                            </div>
+                            <span class="font-weight-bold text-primary ml-2" id ="lloydsValueSpan" style="display: inline-block; width: 2em;"></span>
+                        </div>
+                        <small id="lloydsHelp" class="form-text text-muted">Relax the cell placement</small>
+                    </div>
                     
                     <div class="form-group form-row mb-0">
                         <div class="col-sm-1 ml-4 mr-0 px-0">
@@ -173,7 +184,9 @@
     <script type="text/javascript" src="dist/popper.min.js"></script>
     <script type="text/javascript" src="dist/bootstrap-4.5.3-dist/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript" src="dist/paper/paper-full.min.js"></script>
-    <script type="text/javascript" src="dist/d3-delaunay/d3-delaunay.min.js"></script>
+    <script type="text/javascript" src="dist/d3-delaunay/d3-delaunay.js"></script>
+    <script type="text/javascript" src="dist/d3-delaunay/d3-polygon.v1.min.js"></script>
+    
     <script type="text/javascript" src="js/voronoi-editor.js"></script>
 </body>
 
