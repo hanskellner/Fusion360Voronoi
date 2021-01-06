@@ -1,6 +1,6 @@
 # ![Fusion360Voronoi](./resources/32x32.png) Voronoi Sketch Generator for Fusion 360
 
-![Fusion 360 Voronoi](./resources/Voronoi-tooltip.png)
+![Fusion 360 Voronoi Add-In](./resources/Voronoi-tooltip.png)
 
 This is an [Autodesk Fusion 360](http://fusion360.autodesk.com/) add-in for generating Voronoi diagrams.  Once created, a Voronoi diagram is inserted into a sketch and then may be used for creating or modifying models.
 
@@ -86,6 +86,8 @@ https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcartic
             ***Warning: Modifies the current voronoi pattern***
         - **Cell Scale**
             This scales the cells and is useful to add a margin between cells or prevent overlap for symbols.
+        - **Relaxation**
+            This is used to 'relax' the spacing between the cells.  It's useful for normalizing the distances between cells and especially when using symbol styles (e.g. Stars).  More information below in the 'Relaxation' section.
         - **Clip Outside**
             Checking this will clip (remove) and cells outside of the profile
         - **Clip Intersecting**
@@ -137,6 +139,23 @@ At this point the palette will be appear and the circular profile contaning a vo
 13. Feel free to 'Undo' the extrude and try again but this time use an offset of '-0.2 in' to cut the pattern into the cylinder.
 
     ![Voronoi Extrude Cut](./images/Voronoi_Cylinder_Extrude_Cut.png)
+
+## Relaxation
+
+This setting for adjusting the 'Relaxation' is useful for normalizing the distances between the cells.
+
+Here are views of a Voronoi after changing the setting to 0, 20, and 500.
+
+![Relaxation 0 Curves](./images/VoronoiSketchGenerator-Relax0Curves.png)
+![Relaxation 20 Curves](./images/VoronoiSketchGenerator-Relax0Curves.png)
+![Relaxation 500 Curves](./images/VoronoiSketchGenerator-Relax0Curves.png)
+
+This setting is also helpful for the symbol styles.  For example, here are 'Stars' at different relaxation settings:
+
+![Relaxation 20 Stars](./images/VoronoiSketchGenerator-Relax20Stars.png)
+![Relaxation 500 Stars](./images/VoronoiSketchGenerator-Relax500Stars.png)
+
+Background information on the technique: https://en.wikipedia.org/wiki/Lloyd%27s_algorithm
 
 ## Video Screencast 
 
