@@ -416,7 +416,7 @@ class VoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
             # Create and display the palette.
             palette = _ui.palettes.itemById(_PALETTE_ID)
             if not palette:
-                palette = _ui.palettes.add(_PALETTE_ID, _PALETTE_TITLE, _PALETTE_HTML_FILENAME, True, False, True, 1120, 640, True)
+                palette = _ui.palettes.add(_PALETTE_ID, _PALETTE_TITLE, _PALETTE_HTML_FILENAME, True, True, True, 1120, 640, True)
 
                 # Float the palette.
                 palette.dockingState = adsk.core.PaletteDockingStates.PaletteDockStateFloating
