@@ -1,11 +1,5 @@
-/node_modules
-.package.swp
 
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
 
 *.log
 
@@ -21,11 +15,9 @@
 Network Trash Folder
 Temporary Items
 .apdisk
+$RECYCLE.BIN/
 
 Thumbs.db
 ehthumbs.db
 
 Desktop.ini
-
-$RECYCLE.BIN/
-.vscode/settings.json
