@@ -86,12 +86,30 @@ $(function() {
         $('#sidebar').toggleClass('active');
     });
 
-    $('#publishBtn').on('click', function () {
+    $('#publishToFusionBtn').on('click', function () {
         sendEventPublishToFusion();
     });
 
-    $('#closeBtn').on('click', function () {
-        sendEventCloseDialogToFusion();
+    $('#downloadSVGBtn').on('click', function() {
+        var svg = generateSVG();
+
+        if (svg === null || svg === '') {
+            // TODO: Display error to user.
+            console.log("No SVG generated.");
+            return;
+        }
+
+        // create a blob url representing the data
+        var blob = new Blob([svg]);
+        var blob_url = window.URL.createObjectURL(blob);
+
+        // attach blob url to anchor element with download attribute
+        var anchor = document.createElement('a');
+        anchor.setAttribute('href', blob_url);
+        anchor.setAttribute('download', 'voronoi.svg');
+        anchor.setAttribute('target', '_blank');
+        anchor.click();
+        window.URL.revokeObjectURL(blob_url);
     });
 
     function showDebugText(str) {
@@ -811,6 +829,39 @@ $(function() {
 
     /////////////////////////////////////////////////////////////////////////
 
+    function generateSVG(isYUp = false) {
+        // First reset to default scaling
+        var prevScale = propertyViewScale();
+        unscaleView();
+
+        if (isYUp) {
+            // HACK: Paper is Y+ downward and Fusion Y+ upward
+            // Flip the diagram before we generate SVG
+
+            var tyPrev = paper.view.matrix.ty;
+            paper.view.matrix.ty = -1 * cms2pixels(propertyPageHeight());
+        }
+
+        // Hide profile
+        if (_profilePath != null) {
+            _profilePath.remove();
+        }
+
+        // Get the SVG
+        var svg = paper.project.exportSVG({asString:true});
+
+        // Restore profile
+        if (_profilePath != null) {
+            paper.project.activeLayer.addChild(_profilePath);
+        }
+
+        // Restore scale
+        paper.view.matrix.ty = tyPrev;
+        scaleView(prevScale);
+
+        return svg;
+    }
+
     var scaleLast = 1;
 
     function scaleView() {
@@ -941,7 +992,7 @@ $(function() {
     forceUpdate();   // Update and draw the diagram
 
     // Queue up event to tell Fusion we are alive
-    setTimeout(sendEventStartedToFusion, 100);
+    setTimeout(sendEventStartedToFusion, 500);
 
     // TEST:
     //handleActionStarted(TEST_INIT_FROM_FUSION);
@@ -979,11 +1030,21 @@ $(function() {
         }
     }
 
+    // Used to check if running in Fusion 360.  It akes a moment for 'adsk' namespace
+    // to be injected by Fusion.
+    var _fusionStartCounter = 4;
+
     function sendEventStartedToFusion() {
 
         if (typeof adsk === 'undefined') {
-            return; // Not running in Fusion 360
+            if (_fusionStartCounter > 0) {
+                _fusionStartCounter--;
+                setTimeout(sendEventStartedToFusion, 250);  // Let's try again
+            }
+            return;
         }
+
+        $("#publishToFusionBtn").show();    // Show the publish button
 
         // Package up data as JSON
         var jsonDataStr = `{
@@ -1005,34 +1066,10 @@ $(function() {
             return; // Not running in Fusion 360
         }
 
-        // First reset to default scaling
-        var prevScale = propertyViewScale();
-        unscaleView();
-
-        // HACK: Paper is Y+ downward and Fusion Y+ upward
-        // Flip the diagram before we generate SVG
-
-        var tyPrev = paper.view.matrix.ty;
-        paper.view.matrix.ty = -1 * cms2pixels(propertyPageHeight());
-
-        // Hide profile
-        if (_profilePath != null) {
-            _profilePath.remove();
-        }
-
-        // Get the SVG
-        var svg = paper.project.exportSVG({asString:true});
-
-        // Restore profile
-        if (_profilePath != null) {
-            paper.project.activeLayer.addChild(_profilePath);
-        }
-
-        // Restore scale
-        paper.view.matrix.ty = tyPrev;
-        scaleView(prevScale);
+        var svg = generateSVG(true);    // Generate with Y+ upward (Fusion)
 
         if (svg === null || svg === '') {
+            // TODO: Display error to user.
             console.log("No SVG generated.");
             return;
         }
