@@ -155,6 +155,10 @@ This setting is also helpful for the symbol styles.  For example, here are 'Star
 ![Relaxation 20 Stars](./images/VoronoiSketchGenerator-Relax20Stars.png)
 ![Relaxation 500 Stars](./images/VoronoiSketchGenerator-Relax500Stars.png)
 
+And here's a box with a Voronoi stars pattern cut into the top surface:
+
+![Image of box with Voronoi star pattern on top surface](./images/examples/Voronoi_Star_Field_2021_sm.jpg)
+
 More information about the algorithm on [Wikipedia](https://en.wikipedia.org/wiki/Lloyd%27s_algorithm).
 
 ## Video Screencast 
