@@ -184,12 +184,12 @@ Other examples posted on my [Fusion 360 project gallery](https://fusion360.autod
 ## TODO and Issues
 
 - Inserting a voronoi diagram with many cells may cause Fusion 360 to hang for a long time.  There may be no workaround on the add-in side.
-- Re-enable Llloyd's Relaxation
 - When using a profile, the voronoi diagram will not be inserted at the offset of the profile.  The workaround is to:
     1. Edit the sketch containing the voronoi
     2. Change the 'Select->Selection Filters' to select only Sketch Points.
     3. Window or Freeform select all of the voronoi cells.
     4. Select Move/Copy and move the points to the correct offset.  Note, moving the points will also move the cell curves.
+- Support export of SVG from palette interface
 
 ## Credits
 
