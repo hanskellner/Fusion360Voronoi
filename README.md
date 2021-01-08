@@ -75,8 +75,8 @@ https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcartic
 
     * On the top title bar are:
         - Left button toggles the settings palette opened or closed.
-        - Publish button will add the diagram into the selected sketch or create a new sketch.
-        - Close will exit the palette without inserting the diagram.
+        - Download SVG button can be used to download the diagram to a local drive.
+        - Publish button will add the diagram into Fusion 360.
     * On the left side of the palette are the settings that control the voronoi generation.  See below for details.
         - **Cell Style**
             This dropdown is used to define how the cells are rendered.  The first two, Curves and Straight, create the two most common style of voronoi patterns.  The remaining options are symbols.  Selecting a symbol will cause one to be inserted at the centroid of each cell and scaled to fit within the cell.  Note that the scaling is not perfect at the moment.  The rotation of each symbol is also set to a random value.
