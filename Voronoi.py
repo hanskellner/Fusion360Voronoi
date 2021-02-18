@@ -85,7 +85,7 @@ def getSelectedSketchName():
     if _targetSelectionInput.selectionCount == 1:
         theSelection = _targetSelectionInput.selection(0)
 
-        if theSelection.objectType == 'Sketch':
+        if theSelection.entity.objectType == adsk.fusion.Sketch.classType():
             return theSelection.entity.name
             
     # Nothing selected or a profile selected so no sketch name

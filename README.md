@@ -14,7 +14,15 @@ See the "Usage" section for more information and help.
 
 ## Installation
 
-Installing the add-in in the Fusion 360 Addins folder allows it to automatically be found and displayed in the add-ins list.
+Please see the most recent install instructions here:
+
+https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcarticles/sfdcarticles/How-to-install-an-ADD-IN-and-Script-in-Fusion-360.html 
+
+If you are installing manually, then please download the archive file (ZIP) from Github by clicking on the "Clone or download" button and then selecting "Download ZIP".
+
+Once you have the ZIP file, please follow the manual install instructions in the link above.
+
+Note, installing the add-in into the Fusion 360 Addins folder allows it to automatically be found and displayed in the add-ins list.
 
 ### Mac Add-Ins Folder
 
