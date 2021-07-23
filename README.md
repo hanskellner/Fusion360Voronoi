@@ -12,6 +12,12 @@ The other styles place symbols at each cell location.  For example, selecting th
 
 See the "Usage" section for more information and help.
 
+## Live Version
+
+Play with a web version and download the Voronoi patterns as SVG:
+
+https://hanskellner.github.io/Fusion360Voronoi/Voronoi.html
+
 ## Installation
 
 Please see the most recent install instructions here:
