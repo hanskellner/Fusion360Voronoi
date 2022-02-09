@@ -742,7 +742,7 @@ def run(context):
             btnControl.isPromoted = True
         
         if context['IsApplicationStartup'] is False:
-            _ui.messageBox('The "Create Voronoi" command has been added\nto the CREATE panel dropdown of the MODEL workspace.\n\nTo run the command, select the CREATE dropdown\nthen select "Create Voronoi".')
+            _ui.messageBox('The "Voronoi Sketch Generator" command has been added\nto the SOLID->CREATE panel dropdown of the DESIGN workspace.\n\nTo run the command, select the SOLID->CREATE dropdown\nthen select "Voronoi Sketch Generator".')
     except:
         #pass
         if _ui:
