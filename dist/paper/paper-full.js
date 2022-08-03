@@ -1,5 +1,5 @@
 /*!
- * Paper.js v0.12.11 - The Swiss Army Knife of Vector Graphics Scripting.
+ * Paper.js v0.12.15 - The Swiss Army Knife of Vector Graphics Scripting.
  * http://paperjs.org/
  *
  * Copyright (c) 2011 - 2020, Jürg Lehni & Jonathan Puckey
@@ -9,7 +9,7 @@
  *
  * All rights reserved.
  *
- * Date: Fri Jun 19 19:14:33 2020 +0200
+ * Date: Wed Mar 17 10:49:48 2021 +0100
  *
  ***
  *
@@ -821,7 +821,7 @@ var PaperScope = Base.extend({
 		}
 	},
 
-	version: "0.12.11",
+	version: "0.12.15",
 
 	getView: function() {
 		var project = this.project;
@@ -3891,27 +3891,47 @@ new function() {
 			this.setName(name);
 	},
 
-	rasterize: function(resolution, insert) {
+	rasterize: function(arg0, arg1) {
+		var resolution,
+			insert,
+			raster;
+		if (Base.isPlainObject(arg0)) {
+			resolution = arg0.resolution;
+			insert = arg0.insert;
+			raster = arg0.raster;
+		} else {
+			resolution = arg0;
+			insert = arg1;
+		}
+		if (raster) {
+			raster.matrix.reset(true);
+		} else {
+			raster = new Raster(Item.NO_INSERT);
+		}
 		var bounds = this.getStrokeBounds(),
 			scale = (resolution || this.getView().getResolution()) / 72,
 			topLeft = bounds.getTopLeft().floor(),
 			bottomRight = bounds.getBottomRight().ceil(),
-			size = new Size(bottomRight.subtract(topLeft)),
-			raster = new Raster(Item.NO_INSERT);
-		if (!size.isZero()) {
-			var canvas = CanvasProvider.getCanvas(size.multiply(scale)),
-				ctx = canvas.getContext('2d'),
+			boundsSize = new Size(bottomRight.subtract(topLeft)),
+			rasterSize = boundsSize.multiply(scale);
+		raster.setSize(rasterSize, true);
+
+		if (!rasterSize.isZero()) {
+			var ctx = raster.getContext(true),
 				matrix = new Matrix().scale(scale).translate(topLeft.negate());
 			ctx.save();
 			matrix.applyToContext(ctx);
 			this.draw(ctx, new Base({ matrices: [matrix] }));
 			ctx.restore();
-			raster.setCanvas(canvas);
 		}
-		raster.transform(new Matrix().translate(topLeft.add(size.divide(2)))
-				.scale(1 / scale));
-		if (insert === undefined || insert)
+		raster.transform(
+			new Matrix()
+				.translate(topLeft.add(boundsSize.divide(2)))
+				.scale(1 / scale)
+		);
+		if (insert === undefined || insert) {
 			raster.insertAbove(this);
+		}
 		return raster;
 	},
 
@@ -5345,7 +5365,7 @@ var Raster = Item.extend({
 		source: null
 	},
 	_prioritize: ['crossOrigin'],
-	_smoothing: true,
+	_smoothing: 'low',
 	beans: true,
 
 	initialize: function Raster(source, position) {
@@ -5403,20 +5423,23 @@ var Raster = Item.extend({
 				this, 'setSize');
 	},
 
-	setSize: function() {
+	setSize: function(_size, _clear) {
 		var size = Size.read(arguments);
 		if (!size.equals(this._size)) {
 			if (size.width > 0 && size.height > 0) {
-				var element = this.getElement();
+				var element = !_clear && this.getElement();
 				this._setImage(CanvasProvider.getCanvas(size));
-				if (element)
+				if (element) {
 					this.getContext(true).drawImage(element, 0, 0,
 							size.width, size.height);
+				}
 			} else {
 				if (this._canvas)
 					CanvasProvider.release(this._canvas);
 				this._size = size.clone();
 			}
+		} else if (_clear) {
+			this.clear();
 		}
 	},
 
@@ -5569,7 +5592,9 @@ var Raster = Item.extend({
 	},
 
 	setSmoothing: function(smoothing) {
-		this._smoothing = smoothing;
+		this._smoothing = typeof smoothing === 'string'
+			? smoothing
+			: smoothing ? 'low' : 'off';
 		this._changed(257);
 	},
 
@@ -5739,8 +5764,12 @@ var Raster = Item.extend({
 
 			this._setStyles(ctx, param, viewMatrix);
 
+			var smoothing = this._smoothing,
+				disabled = smoothing === 'off';
 			DomElement.setPrefixed(
-				ctx, 'imageSmoothingEnabled', this._smoothing
+				ctx,
+				disabled ? 'imageSmoothingEnabled' : 'imageSmoothingQuality',
+				disabled ? false : smoothing
 			);
 
 			ctx.drawImage(element,
@@ -14030,7 +14059,7 @@ var Tween = Base.extend(Emitter, {
 	_class: 'Tween',
 
 	statics: {
-		easings: {
+		easings: new Base({
 			linear: function(t) {
 				return t;
 			},
@@ -14090,7 +14119,7 @@ var Tween = Base.extend(Emitter, {
 					? 16 * t * t * t * t * t
 					: 1 + 16 * (--t) * t * t * t * t;
 			}
-		}
+		})
 	},
 
 	initialize: function Tween(object, from, to, duration, easing, start) {

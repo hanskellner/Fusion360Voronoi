@@ -28,11 +28,11 @@ $(function() {
     const LLOYDS_OMEGA = 0.2;
 
     // Default page sizes for standard (inches) and metric (centimeters)
-    const DEFAULT_PAGE_WIDTH_STANDARD   = 11 - 1.5;     // letter - margins
-    const DEFAULT_PAGE_HEIGHT_STANDARD  = 8.5 - 1.75;   // 
+    const DEFAULT_PAGE_WIDTH_STANDARD   = 8;
+    const DEFAULT_PAGE_HEIGHT_STANDARD  = 6; 
 
-    const DEFAULT_PAGE_WIDTH_METRIC     = 29.7 - 1.9 - 1.32;    // A4 - margins
-    const DEFAULT_PAGE_HEIGHT_METRIC    = 21 - 2.54 - 3.67;
+    const DEFAULT_PAGE_WIDTH_METRIC     = 20;
+    const DEFAULT_PAGE_HEIGHT_METRIC    = 15;
 
     // Which units we support.  Note that Centimeters is the default for the
     // Fusion 360 API.  THerefore, that's what is used here.
@@ -42,7 +42,7 @@ $(function() {
     }
 
     //var TEST_PROFILE = '[[{"x":"12.7","y":"7.62"}, {"x":"12.7","y":"7.82"}, {"x":"12.68","y":"8.02"}, {"x":"12.66","y":"8.219"}, {"x":"12.64","y":"8.417"}, {"x":"12.6","y":"8.614"}, {"x":"12.56","y":"8.809"}, {"x":"12.51","y":"9.002"}, {"x":"12.45","y":"9.194"}, {"x":"12.38","y":"9.383"}, {"x":"12.31","y":"9.569"}, {"x":"12.23","y":"9.752"}, {"x":"12.14","y":"9.932"}, {"x":"12.05","y":"10.11"}, {"x":"11.95","y":"10.28"}, {"x":"11.84","y":"10.45"}, {"x":"11.73","y":"10.61"}, {"x":"11.6","y":"10.77"}, {"x":"11.48","y":"10.93"}, {"x":"11.34","y":"11.08"}, {"x":"11.2","y":"11.22"}, {"x":"11.06","y":"11.36"}, {"x":"10.91","y":"11.49"}, {"x":"10.76","y":"11.62"}, {"x":"10.6","y":"11.74"}, {"x":"10.43","y":"11.85"}, {"x":"10.26","y":"11.96"}, {"x":"10.09","y":"12.06"}, {"x":"9.914","y":"12.15"}, {"x":"9.733","y":"12.24"}, {"x":"9.55","y":"12.32"}, {"x":"9.363","y":"12.39"}, {"x":"9.174","y":"12.46"}, {"x":"8.983","y":"12.51"}, {"x":"8.789","y":"12.56"}, {"x":"8.594","y":"12.61"}, {"x":"8.397","y":"12.64"}, {"x":"8.198","y":"12.67"}, {"x":"7.999","y":"12.69"}, {"x":"7.8","y":"12.7"}, {"x":"7.6","y":"12.7"}, {"x":"7.4","y":"12.7"}, {"x":"7.2","y":"12.68"}, {"x":"7.001","y":"12.66"}, {"x":"6.803","y":"12.63"}, {"x":"6.606","y":"12.6"}, {"x":"6.411","y":"12.55"}, {"x":"6.218","y":"12.5"}, {"x":"6.027","y":"12.44"}, {"x":"5.838","y":"12.38"}, {"x":"5.652","y":"12.3"}, {"x":"5.47","y":"12.22"}, {"x":"5.29","y":"12.13"}, {"x":"5.114","y":"12.04"}, {"x":"4.942","y":"11.94"}, {"x":"4.774","y":"11.83"}, {"x":"4.611","y":"11.71"}, {"x":"4.452","y":"11.59"}, {"x":"4.298","y":"11.46"}, {"x":"4.15","y":"11.33"}, {"x":"4.006","y":"11.19"}, {"x":"3.869","y":"11.05"}, {"x":"3.737","y":"10.9"}, {"x":"3.611","y":"10.74"}, {"x":"3.491","y":"10.58"}, {"x":"3.378","y":"10.41"}, {"x":"3.271","y":"10.25"}, {"x":"3.171","y":"10.07"}, {"x":"3.078","y":"9.895"}, {"x":"2.992","y":"9.715"}, {"x":"2.913","y":"9.531"}, {"x":"2.842","y":"9.344"}, {"x":"2.777","y":"9.155"}, {"x":"2.721","y":"8.963"}, {"x":"2.672","y":"8.769"}, {"x":"2.63","y":"8.574"}, {"x":"2.597","y":"8.376"}, {"x":"2.571","y":"8.178"}, {"x":"2.553","y":"7.979"}, {"x":"2.542","y":"7.779"}, {"x":"2.54","y":"7.62"}], [{"x":"2.54","y":"7.62"}, {"x":"2.54","y":"2.54"}], [{"x":"2.54","y":"2.54"}, {"x":"12.7","y":"2.54"}], [{"x":"12.7","y":"2.54"}, {"x":"12.7","y":"7.62"}]]';
-    //var TEST_INIT_FROM_FUSION = '{"units": "in", "width": "10.0", "height": "7.5", "profile": []}';
+    var TEST_INIT_FROM_FUSION = '{"units": "in", "width": "6.350000222692", "height": "5.08000002", "profile": [[{"x":"3.81","y":"7.62"}, {"x":"-2.54","y":"7.62"}], [{"x":"-2.54","y":"7.62"}, {"x":"-2.54","y":"2.54"}], [{"x":"-2.54","y":"2.54"}, {"x":"3.81","y":"2.54"}], [{"x":"3.81","y":"2.54"}, {"x":"3.81","y":"7.62"}]]}';
     
     /////////////////////////////////////////////////////////////////////////
 
@@ -67,14 +67,19 @@ $(function() {
     var _delaunay = null;
     var _voronoi = null;
 
+    var _layerDefault = null;
+    var _layerVoronoi = null;
+
     // TESTING PROFILE
     //var jsonProfile = JSON.parse(TEST_PROFILE);
     //setPropertyProfile(jsonProfile);
     
     /////////////////////////////////////////////////////////////////////////
 
-    function inches2pixels(val) { return (val * 96); }
-    function pixels2inches(val) { return (val / 96); }
+    var _dpi = 72;  // Dots/Pixels per inch
+
+    function inches2pixels(val) { return (val * _dpi); }
+    function pixels2inches(val) { return (val / _dpi); }
 
     function cms2pixels(val) { return inches2pixels(cms2inches(val)); }
     function pixels2cms(val) { return pixels2inches(inches2cms(val)); }
@@ -91,11 +96,12 @@ $(function() {
     });
 
     $('#downloadSVGBtn').on('click', function() {
-        var svg = generateSVG();
+
+        var svg = generateSVG();    // Non-Fusion 360 generate
 
         if (svg === null || svg === '') {
             // TODO: Display error to user.
-            console.log("No SVG generated.");
+            console.log("Failed to generate an SVG.");
             return;
         }
 
@@ -177,7 +183,7 @@ $(function() {
     }
 
     // Page width
-    var _pageWidth = DEFAULT_PAGE_WIDTH_METRIC; // internally always centimeters
+    var _pageWidth = inches2cms(DEFAULT_PAGE_WIDTH_STANDARD); // internally always centimeters
 
     // Return the page width (always in cms)
     function propertyPageWidth() {
@@ -188,11 +194,10 @@ $(function() {
     // Callers must call resizeCanvas() afterwards.
     function setPropertyPageWidth(val) {
         _pageWidth = val;
-        //resizeCanvas();
     }
 
     // Page height
-    var _pageHeight = DEFAULT_PAGE_HEIGHT_METRIC; // internally always in centimeters
+    var _pageHeight = inches2cms(DEFAULT_PAGE_HEIGHT_STANDARD); // internally always in centimeters
 
     // Return the page height (always in cms)
     function propertyPageHeight() {
@@ -203,7 +208,6 @@ $(function() {
     // Callers must call resizeCanvas() afterwards.
     function setPropertyPageHeight(val) {
         _pageHeight = val;
-        //resizeCanvas();
     }
 
     // Padding between border and voronoi (centimeters)
@@ -224,7 +228,6 @@ $(function() {
         }
     
         if (newVal !== _padding) {
-            console.log(newVal);
             _padding = newVal;
             forceUpdate();
         }
@@ -233,7 +236,7 @@ $(function() {
         }
     });
 
-    // Return the page padding (always in cms)
+    // Return the page padding (in CMs).
     function propertyPagePadding() {
         var val = Number($valuePagePadding.val());
         if (val === NaN || val < 0) {
@@ -391,7 +394,7 @@ $(function() {
     // Show Page Border
     const $valueShowPageBorder = $('#pageBorderCheckbox');
     $valueShowPageBorder.change( () => {
-        updateView();
+        showHideBorders();
     });    
 
     function propertyShowPageBorder() {
@@ -408,12 +411,24 @@ $(function() {
     $valueSpanViewScale.html($valueViewScale.val());
     $valueViewScale.on('input change', () => {
         $valueSpanViewScale.html($valueViewScale.val());
-        scaleView();
+        scaleView(propertyViewScale());
+        //console.log("setSpanViewScale = " + $valueViewScale.val());
     });
 
     function propertyViewScale(defaultScale = 1) {
         var val = parseInt($valueViewScale.val());
         return (val !== NaN && val !== 0) ? val/100 : defaultScale;
+    }
+
+    function setPropertyViewScale(newScale) {
+        if (newScale !== NaN) {
+            newScale = newScale * 100;
+            if (newScale >= 1 && newScale <= 200) {
+                $valueViewScale.val(newScale);
+                $valueSpanViewScale.html($valueViewScale.val());
+                //console.log("setPropertyViewScale = " + newScale/100);
+            }
+        }
     }
 
 
@@ -450,12 +465,13 @@ $(function() {
     var lastRandom = 0;
     function nextRandomNumber() {
         lastRandom = (lastRandom * 9301 + 49297) % 233280;
-        var randomNumber = lastRandom / 233280;
+        var randomNumber = lastRandom / 233280.0;
         return randomNumber;
     }
 
     // prime the random number generator
     var seed = new Date().getTime();
+    if (seed < 0) seed = -seed;
     lastRandom = primeNumbers[(seed % primeNumbers.length)] * seed;
     
     /////////////////////////////////////////////////////////////////////////
@@ -504,7 +520,9 @@ $(function() {
         _delaunay = d3.Delaunay.from(_cellSitesRelaxed);
         //console.timeEnd('delaunay');
 
-        _voronoi = _delaunay.voronoi([_xMinCellSites,_yMinCellSites,_xMaxCellSites,_yMaxCellSites]);
+        var padding = cms2pixels(propertyPagePadding());
+
+        _voronoi = _delaunay.voronoi([padding, padding, padding + _pageWidthInner, padding + _pageHeightInner]);
     }
 
 
@@ -514,11 +532,8 @@ $(function() {
     const getDistance = (a, b) => Math.sqrt(Math.pow(a.x-b.x, 2)+Math.pow(a.y-b.y, 2))
     const getSiteDistance = (a, b) => Math.sqrt(Math.pow(a[0]-b[0], 2)+Math.pow(a[1]-b[1], 2))
 
-    // Bounds of cell points
-    var _xMinCellSites = Infinity;
-    var _yMinCellSites = Infinity;
-    var _xMaxCellSites = -Infinity;
-    var _yMaxCellSites = -Infinity;
+    var _pageWidthInner = 1;
+    var _pageHeightInner = 1;
 
     function generateCellSites(count) {
 
@@ -526,13 +541,20 @@ $(function() {
         var pageHeight = cms2pixels(propertyPageHeight());
         var padding = cms2pixels(propertyPagePadding());
 
+        // Is there a profile path
+        var profile = propertyProfile();
+        if (profile.length > 0) {
+            pageWidth = cms2pixels(_profileBounds.xmax - _profileBounds.xmin);
+            pageHeight = cms2pixels(_profileBounds.ymax - _profileBounds.ymin);
+        }
+
         if (pageWidth > pageHeight)
             padding = Math.min(pageHeight/4, padding);
         else
             padding = Math.min(pageWidth/4, padding);
 
-        var pageWidthInner = (pageWidth - 2*padding);
-        var pageHeightInner = (pageHeight - 2*padding);
+        _pageWidthInner = (pageWidth - 2 * padding);
+        _pageHeightInner = (pageHeight - 2 * padding);
 
         //console.log("Page Width = " + pageWidth + " Height = " + pageHeight);
         //console.log("Page Inner Width = " + pageWidthInner + " Height = " + pageHeightInner);
@@ -540,23 +562,8 @@ $(function() {
         // Create a set of random cell sites.  These are center points of each cell.
         var sites = [];
         for (var iCells = 0; iCells < count; ++iCells) {
-            var site = [nextRandomNumber() * pageWidthInner + padding, nextRandomNumber() * pageHeightInner + padding];
+            var site = [nextRandomNumber() * _pageWidthInner + padding, nextRandomNumber() * _pageHeightInner + padding];
             sites.push(site);
-        }
-
-        // Find bounds of the points
-        _xMinCellSites = Infinity;
-        _yMinCellSites = Infinity;
-        _xMaxCellSites = -Infinity;
-        _yMaxCellSites = -Infinity;
-
-        for (var i = 0; i < sites.length; i++) {
-            const x = sites[i][0];
-            const y = sites[i][1];
-            if (x < _xMinCellSites) _xMinCellSites = x;
-            if (y < _yMinCellSites) _yMinCellSites = y;
-            if (x > _xMaxCellSites) _xMaxCellSites = x;
-            if (y > _yMaxCellSites) _yMaxCellSites = y;
         }
 
         return sites;
@@ -571,10 +578,6 @@ $(function() {
 
             // Save original sites so that relaxation applied to copy.
             initRelaxedCellSites();
-
-            //var cellSitesRelaxed = JSON.parse(JSON.stringify(_cellSites));
-            //console.log(cellSitesRelaxed);
-            //console.log(_cellSites);
 
             generateVoronoi();
 
@@ -637,11 +640,7 @@ $(function() {
         if (edgeStyle == CellEdgeStyle.Curved || edgeStyle == CellEdgeStyle.Straight) {
             path = new paper.Path();
             path.strokeColor = 'black';
-            if (!cellSelected) {
-                path.fillColor = cellColor;
-            } else {
-                path.fullySelected = true;
-            }
+            path.fillColor = cellColor;
             path.closed = true;
         }
         else {
@@ -723,11 +722,7 @@ $(function() {
                     path.rotate(Math.random() * 360, pointCenter);
                     path.scale(propertyCellScale(), propertyCellScale(), pointCenter);
                     path.strokeColor = 'black';
-                    if (!cellSelected) {
-                        path.fillColor = cellColor;
-                    } else {
-                        path.fullySelected = true;
-                    }
+                    path.fillColor = cellColor;
                 }
             }
         }
@@ -735,21 +730,23 @@ $(function() {
         return path;
     }
     
-    function draw() {
-        // Repopulating with new paths
-        paper.project.activeLayer.removeChildren();
-    
-        ctx.setTransform(1, 0, 0, 1, 0, 0); // reset scale
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function showHideBorders() {
+
+        var prevLayer = paper.project.activeLayer;
+
+        if (_layerDefault == null) return;
         
-        // Create border path
+        // Populate the default layer with non-voronoi geometry
+        _layerDefault.activate();
+        _layerDefault.removeChildren();
+
         if (propertyShowPageBorder()) {
             var pathBounds = new paper.Path.Rectangle(
                 new paper.Point(0,0),
                 new paper.Point(cms2pixels(propertyPageWidth()), cms2pixels(propertyPageHeight())));
             pathBounds.strokeColor = 'darkgray';
         }
-                
+
         // Create profile path
         var profile = propertyProfile();
         if (profile.length > 0) {
@@ -785,6 +782,26 @@ $(function() {
         else {
             _profilePath = null;
         }
+
+        // Re-activate the previous layer       
+        if (prevLayer !== null)
+            prevLayer.activate();
+    }
+
+    // Repopulating with new geometry
+    function draw() {
+
+        // Clear out previous versions
+        _layerDefault.removeChildren();
+        _layerVoronoi.removeChildren();
+    
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // reset scale
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        showHideBorders();
+
+        // Populate the voronoi layer
+        _layerVoronoi.activate();
 
         if (_delaunay == null || _voronoi == null) {
             console.log("Delaunay or Voronoi is NULL");
@@ -828,23 +845,33 @@ $(function() {
     }
 
     /////////////////////////////////////////////////////////////////////////
+    // SVG Export
 
-    function generateSVG(isYUp = false) {
-        // First reset to default scaling
+    function generateSVG(forFusion360 = false) {
+        // Save previous scale then scale to 1:1 so SVG exported correctly
         var prevScale = propertyViewScale();
-        unscaleView();
+        scaleView(1);
 
-        if (isYUp) {
-            // HACK: Paper is Y+ downward and Fusion Y+ upward
-            // Flip the diagram before we generate SVG
+        // Hide border/profile layer
+        _layerDefault.visible = false;
 
-            var tyPrev = paper.view.matrix.ty;
-            paper.view.matrix.ty = -1 * cms2pixels(propertyPageHeight());
-        }
-
-        // Hide profile
+        // Hide profile since even invisible it will be exported and visible in Fusion 360
         if (_profilePath != null) {
             _profilePath.remove();
+        }
+
+        var mtxClone = paper.view.matrix.clone();
+
+        if (forFusion360) {
+            // The PPI of Fusion 360 is 96.  Check if we need to scale
+            // because our PPI is different. HACK
+            if (_dpi !== 0 && _dpi !== 96) {
+                var scaleFactor = 96/_dpi;
+                paper.view.matrix.scale(scaleFactor, new paper.Point(0,0));
+            }
+            
+            // console.log("propertyPageHeight() = " + propertyPageHeight());
+            // console.log("paper.view.matrix.ty = " + paper.view.matrix.ty);
         }
 
         // Get the SVG
@@ -852,11 +879,14 @@ $(function() {
 
         // Restore profile
         if (_profilePath != null) {
-            paper.project.activeLayer.addChild(_profilePath);
+           _layerDefault.addChild(_profilePath);
         }
 
-        // Restore scale
-        paper.view.matrix.ty = tyPrev;
+        // Show border/profile layer
+        _layerDefault.visible = true;
+
+        // Restore orientation and scale
+        paper.view.matrix = mtxClone;
         scaleView(prevScale);
 
         return svg;
@@ -864,16 +894,14 @@ $(function() {
 
     var scaleLast = 1;
 
-    function scaleView() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        var scale = propertyViewScale();
-        unscaleView();   // Restore then scale
-        paper.view.scale(scale, new paper.Point(0, 0));
-        scaleLast = scale;
-    }
-
-    function unscaleView() {
-        paper.view.scale(1/scaleLast, new paper.Point(0, 0));
+    function scaleView(newScale) {
+        if (newScale !== NaN && newScale !== scaleLast) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            paper.view.scale(1/scaleLast, new paper.Point(0, 0));
+            setPropertyViewScale(newScale);
+            paper.view.scale(newScale, new paper.Point(0, 0));
+            scaleLast = newScale;
+        }
     }
 
     function resizeCanvas() {
@@ -905,7 +933,7 @@ $(function() {
         canvas.width = pageWidthInPixels * scalex;
         canvas.height = pageHeightInPixels * scaley;
 
-        console.log("Canvas size = " + canvas.width + " x " + canvas.height );
+        //console.log("Canvas size = " + canvas.width + " x " + canvas.height );
 
         // TODO: SEE: https://matthiasberth.com/tech/stable-zoom-and-pan-in-paperjs
         //paper.project.activeLayer.position = paper.view.bounds.center;
@@ -915,18 +943,27 @@ $(function() {
     // Initialize canvas and paper.js
     
     var cellColor = new paper.Color('lightblue');
-    var cellSelected = false;
 
     var canvas = document.getElementById('voronoiCanvas');
     var ctx = canvas.getContext('2d');
 
     // Now set the drawing buffer size based on the requested page size
+    // REVUEW: This needs correct dpi for cms2pivels conversion but view
+    // is not ready at this time.
     canvas.width = cms2pixels(propertyPageWidth());
     canvas.height = cms2pixels(propertyPageHeight());
 
     // Create an empty project and a view for the canvas.  And do it
     // after we've set the canvas size.
     paper.setup(canvas);
+
+    // const dpr = window.devicePixelRatio;
+    // console.log("DPR = " + dpr);
+    _dpi = paper.view.resolution;
+    console.log("DPI = " + _dpi);
+
+    _layerDefault = paper.project.activeLayer;
+    _layerVoronoi = new paper.Layer();
 
     var _updateView = false;    // True if draw() should be called
 
@@ -940,37 +977,39 @@ $(function() {
 
             draw();     // Note, draw may trigger another update view
 
-            // Get relaxation count and adjust cell cites/centers
-            if (lloydsCounter() > 0) {
-                setLloydsCounter(lloydsCounter()-1);
+            if (_voronoi !== null) {
+                // Get relaxation count and adjust cell cites/centers
+                if (lloydsCounter() > 0) {
+                    setLloydsCounter(lloydsCounter()-1);
 
-                // Move the cell sites towards their cell centroids
-                for (var i = 0, l = cellSitesCount(); i < l; i++) {
-                    var cell = _voronoi.cellPolygon(i);
-                    if (cell == null) continue;
+                    // Move the cell sites towards their cell centroids
+                    for (var i = 0, l = cellSitesCount(); i < l; i++) {
+                        var cell = _voronoi.cellPolygon(i);
+                        if (cell == null) continue;
 
-                    const [x0,y0] = cellSiteAt(i);
-                    const [x1, y1] = d3.polygonCentroid(cell);
+                        const [x0,y0] = cellSiteAt(i);
+                        const [x1, y1] = d3.polygonCentroid(cell);
 
-                    var xNew = x0 + (x1 - x0) * LLOYDS_OMEGA;
-                    var yNew = y0 + (y1 - y0) * LLOYDS_OMEGA;
+                        var xNew = x0 + (x1 - x0) * LLOYDS_OMEGA;
+                        var yNew = y0 + (y1 - y0) * LLOYDS_OMEGA;
 
-                    setCellSiteAt(i, xNew, yNew);
+                        setCellSiteAt(i, xNew, yNew);
+                    }
+
+                    _voronoi.update();
+                    generateVoronoi();
+                    
+                    _updateView = true;
                 }
-
-                _voronoi.update();
-                generateVoronoi();
-                
-                _updateView = true;
             }
         }
     }
-
+    
     // Reset for a new diagram.  Callers must call updateView() afterwards.
     function reset() {
         setPropertyUnits(UNITS.Centimeters);
-        setPropertyPageWidth(DEFAULT_PAGE_WIDTH_METRIC);
-        setPropertyPageHeight(DEFAULT_PAGE_HEIGHT_METRIC);
+        setPropertyPageWidth(inches2cms(DEFAULT_PAGE_WIDTH_STANDARD));
+        setPropertyPageHeight(inches2cms(DEFAULT_PAGE_HEIGHT_STANDARD));
         setPropertyProfile([]);
         resizeCanvas();
     }
@@ -989,13 +1028,81 @@ $(function() {
         updateView();
     }
 
-    forceUpdate();   // Update and draw the diagram
+    var hitOptions = {
+        segments: true,
+        stroke: true,
+        fill: true,
+        tolerance: 5
+    };
+
+    var segment, pathEdit;
+
+    paper.view.onMouseDown = function(event) {
+        segment = pathEdit = null;
+
+        // Hit a voronoi element?
+        var hitResult = paper.project.hitTest(event.point, hitOptions);
+        if (!hitResult || (hitResult.item && hitResult.item.layer !== _layerVoronoi))
+            return;
+
+        if (event.modifiers.shift) {
+            if (hitResult.type == 'segment') {
+                if (hitResult.item.segments.length > 3) {
+                    hitResult.segment.remove();
+                    hitResult.item.smooth();
+                }
+            }
+            else if (hitResult.type == 'fill') {
+                hitResult.item.remove();
+            }
+            return;
+        }
+
+        if (hitResult) {
+            if (hitResult.type == 'segment') {
+                pathEdit = hitResult.item;
+                segment = hitResult.segment;
+            }
+            else if (hitResult.type == 'stroke') {
+                var location = hitResult.location;
+                pathEdit = hitResult.item;
+                segment = pathEdit.insert(location.index + 1, event.point);
+                pathEdit.smooth();
+            }
+            else if (hitResult.type == 'fill') {
+                pathEdit = hitResult.item;
+            }
+        }
+    }
+
+    paper.view.onMouseMove = function(event) {
+        _layerVoronoi.selected = false;
+        var hitResult = paper.project.hitTest(event.point, hitOptions);
+        if (hitResult && hitResult.item && hitResult.item.layer == _layerVoronoi) {
+            hitResult.item.selected = true;
+        }
+    }
+
+    paper.view.onMouseDrag = function(event) {
+        //console.log("onMouseDrag: delta: " + event.delta + " : " + event.point);
+        if (segment) {
+            segment.point.x += event.delta.x;
+            segment.point.y += event.delta.y;
+            pathEdit.smooth();
+        } else if (pathEdit) {
+            pathEdit.position.x += event.delta.x;
+            pathEdit.position.y += event.delta.y;
+        }
+    }
+
+    //forceUpdate();   // Update and draw the diagram
+    resizeHandler();
 
     // Queue up event to tell Fusion we are alive
     setTimeout(sendEventStartedToFusion, 500);
 
-    // TEST:
-    //handleActionStarted(TEST_INIT_FROM_FUSION);
+    // TEST: Receive data to Fusion 360
+    handleActionStarted(TEST_INIT_FROM_FUSION);
 
     /////////////////////////////////////////////////////////////////////////
     // Fusion 360 Add-In Support Section
@@ -1007,6 +1114,7 @@ $(function() {
             reset();
 
             if (typeof jsonData.units !== 'undefined') {
+                // NOTE: This is only used for display purposes.  All values interally should be CMs including those below.
                 setPropertyUnits(jsonData.units);
             }
 
@@ -1030,7 +1138,7 @@ $(function() {
         }
     }
 
-    // Used to check if running in Fusion 360.  It akes a moment for 'adsk' namespace
+    // Used to check if running in Fusion 360.  It takes a moment for 'adsk' namespace
     // to be injected by Fusion.
     var _fusionStartCounter = 4;
 
@@ -1041,10 +1149,16 @@ $(function() {
                 _fusionStartCounter--;
                 setTimeout(sendEventStartedToFusion, 250);  // Let's try again
             }
+            else {
+                // Not running within Fusion so show the SVG download button and update view
+                $("#downloadSVGBtn").show();
+                forceUpdate(); 
+            }
             return;
         }
 
         $("#publishToFusionBtn").show();    // Show the publish button
+        $("#downloadSVGBtn").hide();        // Hide the SVG download button (REVIEW: Blocked by the embedded browser)
 
         // Package up data as JSON
         var jsonDataStr = `{
@@ -1066,11 +1180,11 @@ $(function() {
             return; // Not running in Fusion 360
         }
 
-        var svg = generateSVG(true);    // Generate with Y+ upward (Fusion)
+        var svg = generateSVG(true);    // Generate for Fusion 360
 
         if (svg === null || svg === '') {
             // TODO: Display error to user.
-            console.log("No SVG generated.");
+            console.log("Failed to generate an SVG.");
             return;
         }
 
