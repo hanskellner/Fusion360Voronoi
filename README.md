@@ -220,6 +220,7 @@ When the edit support is enabled, you may perform the following operations:
 
 __**WARNING**__
 
+- Selection fails to work on some of the cells on the lower or right-most part of diagram.
 - There is no undo.  E.g. If you delete a cell, it's gone for good.
 - The shape of a cell is altered as soon as a control point is modified or added.
 - You can lose all your changes if you disable the cell editor (uncheck) and then change one of the controls.
