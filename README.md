@@ -51,7 +51,7 @@ Note, installing the add-in into the Fusion 360 Addins folder allows it to autom
 
 > As an alternative to the above installation location, you can just place the files in their own folder within a location of your choice.  For example, in your Documents or Home folder.  Doing this means the add-in will not automatically appear in the add-ins list.  You will need to manually add it using the "+" button at the top of the list.
 
-There is additional installation help on the Fusion 260 site:
+There is additional installation help on the Fusion 360 site:
 
 https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcarticles/sfdcarticles/How-to-install-an-ADD-IN-and-Script-in-Fusion-360.html
 
@@ -195,10 +195,40 @@ https://autode.sk/2S2jpR5
 
 Other examples posted on my [Fusion 360 project gallery](https://fusion360.autodesk.com/projects/voronoi-script).
 
+## BETA Stuff
+
+**Voronoi Cell Editor**
+
+This release contains a work in progress to allow locking and editing a Voronoi diagram.  This work isn't perfect and has lots of quirks.  But, it does allow one to make various changes to the diagram before publishing to Fusion 360.  Of course you may always just publish and edit within Fusion 360.
+
+- Enable Cell Editor Checkbox
+    - Checkmark this to 'lock' the Voronoi diagram.  This will disable some of the controls that normally cause the diagram to be dynamically updated.  It will also enable the editing support.
+
+When the edit support is enabled, you may perform the following operations:
+
+- Cursor over the diagram to auto-select a Voronoi cell.  You will see handles appear on a seleced cell.
+- Edit Cell Edge
+    - Move cursor over a control point handle then drag the handle
+- Add Cell Edge Control Point
+    - Click on the cell edge away from other handles.  A new control point will be added.
+- Delete Control Point
+    - Move cursor over a control point handle then Shift+Click.
+- Move Cell
+    - Move cursor over the center body of the cell and then drag
+- Delete Cell
+    - Move cursor over the center body of the cell and then Shift-Click
+
+__**WARNING**__
+
+- There is no undo.  E.g. If you delete a cell, it's gone for good.
+- The shape of a cell is altered as soon as a control point is modified or added.
+- You can lose all your changes if you disable the cell editor (uncheck) and then change one of the controls.
+- This is work-in-progress and there's no guarantee it will work.
+
 ## TODO and Issues
 
 - Inserting a voronoi diagram with many cells may cause Fusion 360 to hang for a long time.  There may be no workaround on the add-in side.
-- When using a profile, the voronoi diagram will not be inserted at the offset of the profile.  The workaround is to:
+- When using a profile, the voronoi diagram *may* not be inserted at the offset of the profile.  The workaround is to:
     1. Edit the sketch containing the voronoi
     2. Change the 'Select->Selection Filters' to select only Sketch Points.
     3. Window or Freeform select all of the voronoi cells.
