@@ -61,17 +61,6 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="cellScaleRange">Cell Scale</label>
-                        <div class="d-flex justify-content-center">
-                            <div class="w-75">
-                                <input type="range" class="form-control custom-range" id="cellScaleRange" min="20" max="100" value="85" aria-describedby="cellScaleHelp">
-                            </div>
-                            <span class="font-weight-bold text-primary ml-2" id="cellScaleValueSpan" style="display: inline-block; width: 2em;"></span>
-                        </div>
-                        <small id="cellScaleHelp" class="form-text text-muted">Scale amount for cells</small>
-                    </div>
-                    
-                    <div class="form-group">
                         <label for="cellCountRange">Cell Count</label>
                         <div class="d-flex justify-content-center">
                             <div class="w-75">
@@ -82,6 +71,17 @@
                         <small id="cellCountHelp" class="form-text text-muted">Number of cells</small>
                     </div>
 
+                    <div class="form-group">
+                        <label for="cellScaleRange">Cell Scale</label>
+                        <div class="d-flex justify-content-center">
+                            <div class="w-75">
+                                <input type="range" class="form-control custom-range" id="cellScaleRange" min="20" max="100" value="85" aria-describedby="cellScaleHelp">
+                            </div>
+                            <span class="font-weight-bold text-primary ml-2" id="cellScaleValueSpan" style="display: inline-block; width: 2em;"></span>
+                        </div>
+                        <small id="cellScaleHelp" class="form-text text-muted">Scale amount for cells</small>
+                    </div>
+                    
                     <div class="form-group">
                         <label for="lloydsRange">Relaxation</label>
                         <div class="d-flex justify-content-center">
@@ -143,6 +143,17 @@
                         </div>
                         <small id="viewScaleHelp" class="form-text text-muted">Zoom in or out of view</small>
                     </div>
+
+                    <div class="form-group form-row mb-0">
+                        <div class="col-sm-1 ml-4 mr-0 px-0">
+                            <input type="checkbox" class="form-check-input" id="enableCellEditorCheckbox" data-bind="value:enableCellEditorCheckbox" aria-describedby="enableCellEditorHelp">
+                        </div>
+                        <label for="enableCellEditorCheckbox" class="col-sm-8 form-check-label pl-0">Enable Cell Editor</label>
+                    </div>
+                    <div class="form-row ml-0 mt-0 mb-2">
+                        <small id="enableCellEditorHelp" class="form-text text-muted">Enable editing of cells</small>
+                    </div>
+
                 </form>
             </div>
         </nav>

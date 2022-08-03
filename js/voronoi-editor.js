@@ -431,6 +431,34 @@ $(function() {
         }
     }
 
+    // Enable Cell Editor
+    const $valueEnableCellEditor = $('#enableCellEditorCheckbox');
+    $valueEnableCellEditor.change( () => {
+        enableCellEditor();
+    });    
+
+    function propertyEnableCellEditor() {
+        return ($valueEnableCellEditor.is(":checked"));
+    }
+
+    function setPropertyEnableCellEditor(val) {
+        $valueEnableCellEditor.prop( "checked", val );
+    }
+
+    function enableCellEditor() {
+
+        var isEnabled = propertyEnableCellEditor();
+
+        var hasProfile = (_profileData !== null && _profileData.length > 0);
+        $valueClipCellsOutside.prop( "disabled", isEnabled || !hasProfile );
+        $valueClipCellsIntersect.prop( "disabled", isEnabled || !hasProfile );
+
+        $valueCellEdgeStyle.prop( "disabled", isEnabled );
+        $valueCellCount.prop( "disabled", isEnabled );
+        $valueCellScale.prop( "disabled", isEnabled );
+        $valueLloyds.prop( "disabled", isEnabled );
+        $valuePagePadding.prop( "disabled", isEnabled );
+    }
 
     /////////////////////////////////////////////////////////////////////////
     // Random Numbers
@@ -732,10 +760,10 @@ $(function() {
     
     function showHideBorders() {
 
+        if (_layerDefault == null) return;
+
         var prevLayer = paper.project.activeLayer;
 
-        if (_layerDefault == null) return;
-        
         // Populate the default layer with non-voronoi geometry
         _layerDefault.activate();
         _layerDefault.removeChildren();
@@ -1038,6 +1066,9 @@ $(function() {
     var segment, pathEdit;
 
     paper.view.onMouseDown = function(event) {
+
+        if (!propertyEnableCellEditor()) return;
+
         segment = pathEdit = null;
 
         // Hit a voronoi element?
@@ -1077,6 +1108,9 @@ $(function() {
 
     paper.view.onMouseMove = function(event) {
         _layerVoronoi.selected = false;
+
+        if (!propertyEnableCellEditor()) return;
+
         var hitResult = paper.project.hitTest(event.point, hitOptions);
         if (hitResult && hitResult.item && hitResult.item.layer == _layerVoronoi) {
             hitResult.item.selected = true;
@@ -1084,6 +1118,9 @@ $(function() {
     }
 
     paper.view.onMouseDrag = function(event) {
+
+        if (!propertyEnableCellEditor()) return;
+
         //console.log("onMouseDrag: delta: " + event.delta + " : " + event.point);
         if (segment) {
             segment.point.x += event.delta.x;
