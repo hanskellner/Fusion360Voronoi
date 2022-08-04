@@ -95,13 +95,15 @@ https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcartic
         - Publish button will add the diagram into Fusion 360.
     * On the left side of the palette are the settings that control the voronoi generation.  See below for details.
         - **Cell Style**
-            This dropdown is used to define how the cells are rendered.  The first two, Curves and Straight, create the two most common style of voronoi patterns.  The remaining options are symbols.  Selecting a symbol will cause one to be inserted at the centroid of each cell and scaled to fit within the cell.  Note that the scaling is not perfect at the moment.  The rotation of each symbol is also set to a random value.
-            ***Warning: Modifies the current voronoi pattern***
+            This dropdown is used to define how the cells are rendered.  The first two, Curves and Straight, create the two most common style of voronoi patterns.  The remaining options are shapes/symbols.  Selecting a shape will cause one to be inserted at the centroid of each cell and scaled to fit within the cell.  Note that the scaling is not perfect at the moment.  The rotation of each symbol is also set to a random value.
+            __Note: Changing this will modify the current voronoi pattern__
         - **Cell Count**
             This sets the number of cells.  Note that a large number (> 100) of cells may take a while to generate (sometimes several minutes).
-            ***Warning: Modifies the current voronoi pattern***
-        - **Cell Scale**
-            This scales the cells and is useful to add a margin between cells or prevent overlap for symbols.
+            __Note: Changing this will modify the current voronoi pattern__
+        - **Cell Gap**
+            This scales the cells so that there is a gap of the specified size between the cells. This only effects Curved and Linear cell styles.
+        - **Shape Scale**
+            This scales the shapes.  This only effects cell styles other than Curved and Linear.
         - **Relaxation**
             This is used to 'relax' the spacing between the cells.  It's useful for normalizing the distances between cells and especially when using symbol styles (e.g. Stars).  More information below in the 'Relaxation' section.
         - **Clip Outside**
@@ -114,6 +116,8 @@ https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcartic
             Adds a boundary between the pattern and the border.
         - **Zoom Amount**
             This is used to zoom the view in/out.  It does not effect the result inserted into the sketch.  It's useful for when your palette window is too small and obscures some of the diagram.
+        - **Enable Cell Editor**
+            **BETA FEATURE** This is work-in-progress.  When enabled, this provides basic cell editing support.  It also locks down the options that will dynamicall generate or modify the current design.  See more details in the "Voronoi Cell Editor" section below.
 
 7. Adjust the settings to find a voronoi diagram that you like then click the 'Publish' button.
     Note, for voronoi diagrams with many cells (>100), there may be a delay before the palette closes and the main window appears.
@@ -156,20 +160,25 @@ At this point the palette will be appear and the circular profile contaning a vo
 
     ![Voronoi Extrude Cut](./images/Voronoi_Cylinder_Extrude_Cut.png)
 
+## Cell Gap
+
+This setting scales the cells so that there is a gap of the specified size between the cells.  This only effects Curved and Linear cell styles.
+
+Here are views of a Voronoi after changing the setting between 0 and 4.5mm.
+
+![Cell Gap between 0 and 4.5mm](./images/VoronoiSketchGenerator-Gap.gif)
+
 ## Relaxation
 
 This setting for adjusting the 'Relaxation' is useful for normalizing the distances between the cells.
 
 Here are views of a Voronoi after changing the setting to 0, 20, and 500.
 
-![Relaxation 0 Curves](./images/VoronoiSketchGenerator-Relax0Curves.png)
-![Relaxation 20 Curves](./images/VoronoiSketchGenerator-Relax20Curves.png)
-![Relaxation 500 Curves](./images/VoronoiSketchGenerator-Relax500Curves.png)
+![Relaxation 0 to 500 Curves](./images/VoronoiSketchGenerator-Relaxation.gif)
 
 This setting is also helpful for the symbol styles.  For example, here are 'Stars' at different relaxation settings:
 
-![Relaxation 20 Stars](./images/VoronoiSketchGenerator-Relax20Stars.png)
-![Relaxation 500 Stars](./images/VoronoiSketchGenerator-Relax500Stars.png)
+![Relaxation 20 Stars](./images/VoronoiSketchGenerator-Relaxation-Stars.gif)
 
 And here's a box with a Voronoi stars pattern cut into the top surface:
 
