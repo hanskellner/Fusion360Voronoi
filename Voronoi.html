@@ -72,14 +72,25 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="cellScaleRange">Cell Scale</label>
+                        <label for="cellGapRange">Cell Gap</label>
                         <div class="d-flex justify-content-center">
                             <div class="w-75">
-                                <input type="range" class="form-control custom-range" id="cellScaleRange" min="20" max="100" value="85" aria-describedby="cellScaleHelp">
+                                <input type="range" class="form-control custom-range" id="cellGapRange" min="0" max="20" value="1" step="0.1" aria-describedby="cellGapHelp">
+                            </div>
+                            <span class="font-weight-bold text-primary ml-2" id="cellGapValueSpan" style="display: inline-block; width: 2em;"></span>
+                        </div>
+                        <small id="cellGapHelp" class="form-text text-muted">Gap between cells (mm)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cellScaleRange">Shape Scale</label>
+                        <div class="d-flex justify-content-center">
+                            <div class="w-75">
+                                <input type="range" class="form-control custom-range" id="cellScaleRange" min="25" max="125" value="100" aria-describedby="cellScaleHelp" disabled="disable">
                             </div>
                             <span class="font-weight-bold text-primary ml-2" id="cellScaleValueSpan" style="display: inline-block; width: 2em;"></span>
                         </div>
-                        <small id="cellScaleHelp" class="form-text text-muted">Scale amount for cells</small>
+                        <small id="cellScaleHelp" class="form-text text-muted">Scale amount for shapes</small>
                     </div>
                     
                     <div class="form-group">

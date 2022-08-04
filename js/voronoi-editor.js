@@ -142,7 +142,21 @@ $(function() {
         }
     }
 
-    // For the cell scale range
+    // For the cell gap
+    const $valueSpanCellGap = $('#cellGapValueSpan');
+    const $valueCellGap = $('#cellGapRange');
+    $valueSpanCellGap.html($valueCellGap.val());
+    $valueCellGap.on('input change', () => {
+        $valueSpanCellGap.html($valueCellGap.val());
+        updateView();
+    });
+
+    function propertyCellGap(defaultGap = 1) {
+        var gap = parseFloat($valueCellGap.val());
+        return (gap !== NaN) ? gap : defaultGap;
+    }
+
+    // For the cell shape scale range
     const $valueSpanCellScale = $('#cellScaleValueSpan');
     const $valueCellScale = $('#cellScaleRange');
     $valueSpanCellScale.html($valueCellScale.val());
@@ -151,16 +165,15 @@ $(function() {
         updateView();
     });
 
-    function propertyCellScale(defaultPct = 0.9) {
+    function propertyCellScale(defaultPct = 1.0) {
         var pct = parseInt($valueCellScale.val());
         return (pct !== NaN) ? pct / 100 : defaultPct;
-    }
+    }    
 
     // For the cell edge style
     const $valueCellEdgeStyle = $('#edgeStyleSelect');
     $valueCellEdgeStyle.change(() => {
-        //var style = this.value;
-        updateView();
+        cellEdgeStyleChanged();
     });
 
     const CellEdgeStyle = {
@@ -210,7 +223,8 @@ $(function() {
         _pageHeight = val;
     }
 
-    // Padding between border and voronoi (centimeters)
+    // Padding between border and voronoi (centimeters).  Note that any
+    // cell gap will also add to this padding.
     var _padding = 0;
 
     const $valuePagePadding = $('#pagePaddingInput');
@@ -455,10 +469,24 @@ $(function() {
 
         $valueCellEdgeStyle.prop( "disabled", isEnabled );
         $valueCellCount.prop( "disabled", isEnabled );
+        $valueCellGap.prop( "disabled", isEnabled );
         $valueCellScale.prop( "disabled", isEnabled );
         $valueLloyds.prop( "disabled", isEnabled );
         $valuePagePadding.prop( "disabled", isEnabled );
     }
+
+    // Change in the cell edge style
+    function cellEdgeStyleChanged() {
+
+        var newStyle = propertyCellEdgeStyle();
+    
+        var isShape = (newStyle != CellEdgeStyle.Curved && newStyle != CellEdgeStyle.Straight);
+        $valueCellGap.prop( "disabled", isShape );
+        $valueCellScale.prop( "disabled", !isShape );
+
+        updateView();
+    }
+
 
     /////////////////////////////////////////////////////////////////////////
     // Random Numbers
@@ -504,6 +532,54 @@ $(function() {
     
     /////////////////////////////////////////////////////////////////////////
     // Voronoi generation
+
+    const getDistance = (a, b) => Math.sqrt(Math.pow(a.x-b.x, 2)+Math.pow(a.y-b.y, 2))
+    const getSiteDistance = (a, b) => Math.sqrt(Math.pow(a[0]-b[0], 2)+Math.pow(a[1]-b[1], 2))
+
+    // Scale a cell by distance (pixels).  Assumes +distance is inward scaling.
+    function scaleCellToDistance(path, distNew) {
+
+        if (distNew === 0) {
+            return;
+        }
+
+        // Testing on the clone
+        var pathClone = path.clone({ insert: false, deep: true });
+
+        // Set scale of cell to 100%
+        pathClone.scale(1);
+
+        // Get a known point on the cell edge and save its position
+        var posOrig = pathClone.firstSegment.point.clone();
+
+        // Get the distance to the center and use that to limit scaling
+        var distOrig = getDistance(pathClone.position, posOrig);
+        if (distNew > distOrig - 2) {
+            distNew = distOrig - 2;
+        }
+
+        // scale the cell a specific amount
+        pathClone.scale(0.9);
+
+        // Get the new position of known point
+        var posNew = pathClone.firstSegment.point.clone();
+
+        // Done with this path
+        pathClone.remove();
+
+        // Calculate distance moved by scale
+        var distTest = getDistance(posNew, posOrig);
+        if (distTest <= 0) {
+            return; // Shouldn't get here but let's be safe
+        }
+
+        // Calculate scale amount required to move requested distance
+        var newScale = 1.0 - (0.1 * distNew / distTest);
+
+        // And set the new scale.
+        path.scale(newScale);
+        removeSmallBits(path);
+    }
 
     function cellSitesCount() {
         return _cellSitesRelaxed.length;
@@ -556,9 +632,6 @@ $(function() {
 
     /////////////////////////////////////////////////////////////////////////
     // Cell site generation
-
-    const getDistance = (a, b) => Math.sqrt(Math.pow(a.x-b.x, 2)+Math.pow(a.y-b.y, 2))
-    const getSiteDistance = (a, b) => Math.sqrt(Math.pow(a[0]-b[0], 2)+Math.pow(a[1]-b[1], 2))
 
     var _pageWidthInner = 1;
     var _pageHeightInner = 1;
@@ -695,7 +768,9 @@ $(function() {
                 }
             }
 
-            path.scale(propertyCellScale());
+            // Convert mm to cm then to pixels. But only half since neighboring cells add to other half
+            var distNew = cms2pixels(propertyCellGap() / 10.0) / 2.0;
+            scaleCellToDistance(path, distNew);
             removeSmallBits(path);
         }
         else {
