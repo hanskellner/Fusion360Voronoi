@@ -166,7 +166,7 @@ This setting scales the cells so that there is a gap of the specified size betwe
 
 Here are views of a Voronoi after changing the setting between 0 and 4.5mm.
 
-![Cell Gap between 0 and 4.5mm](./images/VoronoiSketchGenerator-Gap.gif)
+![Cell Gap between 0 and 4.5mm](./images/VoronoiSketchGenerator_Gap.gif)
 
 ## Relaxation
 
