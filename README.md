@@ -2,6 +2,8 @@
 
 ![Fusion 360 Voronoi Add-In](./resources/Voronoi-tooltip.png)
 
+![Relaxation 0 Curves](./images/VoronoiSketchGenerator_2022-Aug.jpg)
+
 This is an [Autodesk Fusion 360](http://fusion360.autodesk.com/) add-in for generating Voronoi diagrams.  Once created, a Voronoi diagram is inserted into a sketch and then may be used for creating or modifying models.
 
 It's possible to select an existing sketch, a sketch profile, or one of the (XY, XZ, YZ) construction planes as the target of the generated diagram.  When a sketch profile is selected, it will be used to define the bounds and to clip the generated diagram.
