@@ -41,9 +41,8 @@ $(function() {
         Centimeters: 'cm'
     }
 
-    //var TEST_PROFILE = '[[{"x":"12.7","y":"7.62"}, {"x":"12.7","y":"7.82"}, {"x":"12.68","y":"8.02"}, {"x":"12.66","y":"8.219"}, {"x":"12.64","y":"8.417"}, {"x":"12.6","y":"8.614"}, {"x":"12.56","y":"8.809"}, {"x":"12.51","y":"9.002"}, {"x":"12.45","y":"9.194"}, {"x":"12.38","y":"9.383"}, {"x":"12.31","y":"9.569"}, {"x":"12.23","y":"9.752"}, {"x":"12.14","y":"9.932"}, {"x":"12.05","y":"10.11"}, {"x":"11.95","y":"10.28"}, {"x":"11.84","y":"10.45"}, {"x":"11.73","y":"10.61"}, {"x":"11.6","y":"10.77"}, {"x":"11.48","y":"10.93"}, {"x":"11.34","y":"11.08"}, {"x":"11.2","y":"11.22"}, {"x":"11.06","y":"11.36"}, {"x":"10.91","y":"11.49"}, {"x":"10.76","y":"11.62"}, {"x":"10.6","y":"11.74"}, {"x":"10.43","y":"11.85"}, {"x":"10.26","y":"11.96"}, {"x":"10.09","y":"12.06"}, {"x":"9.914","y":"12.15"}, {"x":"9.733","y":"12.24"}, {"x":"9.55","y":"12.32"}, {"x":"9.363","y":"12.39"}, {"x":"9.174","y":"12.46"}, {"x":"8.983","y":"12.51"}, {"x":"8.789","y":"12.56"}, {"x":"8.594","y":"12.61"}, {"x":"8.397","y":"12.64"}, {"x":"8.198","y":"12.67"}, {"x":"7.999","y":"12.69"}, {"x":"7.8","y":"12.7"}, {"x":"7.6","y":"12.7"}, {"x":"7.4","y":"12.7"}, {"x":"7.2","y":"12.68"}, {"x":"7.001","y":"12.66"}, {"x":"6.803","y":"12.63"}, {"x":"6.606","y":"12.6"}, {"x":"6.411","y":"12.55"}, {"x":"6.218","y":"12.5"}, {"x":"6.027","y":"12.44"}, {"x":"5.838","y":"12.38"}, {"x":"5.652","y":"12.3"}, {"x":"5.47","y":"12.22"}, {"x":"5.29","y":"12.13"}, {"x":"5.114","y":"12.04"}, {"x":"4.942","y":"11.94"}, {"x":"4.774","y":"11.83"}, {"x":"4.611","y":"11.71"}, {"x":"4.452","y":"11.59"}, {"x":"4.298","y":"11.46"}, {"x":"4.15","y":"11.33"}, {"x":"4.006","y":"11.19"}, {"x":"3.869","y":"11.05"}, {"x":"3.737","y":"10.9"}, {"x":"3.611","y":"10.74"}, {"x":"3.491","y":"10.58"}, {"x":"3.378","y":"10.41"}, {"x":"3.271","y":"10.25"}, {"x":"3.171","y":"10.07"}, {"x":"3.078","y":"9.895"}, {"x":"2.992","y":"9.715"}, {"x":"2.913","y":"9.531"}, {"x":"2.842","y":"9.344"}, {"x":"2.777","y":"9.155"}, {"x":"2.721","y":"8.963"}, {"x":"2.672","y":"8.769"}, {"x":"2.63","y":"8.574"}, {"x":"2.597","y":"8.376"}, {"x":"2.571","y":"8.178"}, {"x":"2.553","y":"7.979"}, {"x":"2.542","y":"7.779"}, {"x":"2.54","y":"7.62"}], [{"x":"2.54","y":"7.62"}, {"x":"2.54","y":"2.54"}], [{"x":"2.54","y":"2.54"}, {"x":"12.7","y":"2.54"}], [{"x":"12.7","y":"2.54"}, {"x":"12.7","y":"7.62"}]]';
-    //var TEST_INIT_FROM_FUSION = '{"units": "in", "width": "6.350000222692", "height": "5.08000002", "profile": [[{"x":"3.81","y":"7.62"}, {"x":"-2.54","y":"7.62"}], [{"x":"-2.54","y":"7.62"}, {"x":"-2.54","y":"2.54"}], [{"x":"-2.54","y":"2.54"}, {"x":"3.81","y":"2.54"}], [{"x":"3.81","y":"2.54"}, {"x":"3.81","y":"7.62"}]]}';
-    
+    //var TEST_INIT_FROM_FUSION = '{"units": "in", "width": "12.7", "height": "27.40", "profile": [[{"x":"7.62","y":"15.24"}, {"x":"0.0","y":"22.32"}],[{"x":"0.0","y":"22.32"}, {"x":"-5.08","y":"15.24"}],[{"x":"-5.08","y":"15.24"}, {"x":"-5.08","y":"5.08"}],[{"x":"-5.08","y":"5.08"}, {"x":"5.08","y":"-5.08"}],[{"x":"5.08","y":"-5.08"}, {"x":"7.62","y":"5.08"}],[{"x":"7.62","y":"5.08"}, {"x":"7.62","y":"15.24"}]]}';
+
     /////////////////////////////////////////////////////////////////////////
 
     var _profileData = [];      // Array of arrays.  Each child array is a path
@@ -55,7 +54,8 @@ $(function() {
         ymax: -Infinity
     }
 
-    var _profilePath = null;    // Paper Path
+    var _profilePath = null;        // Profile path
+    var _profilePathGap = null;     // Profile gap path
 
     var _cellSites = [];
     var _cellSitesCount = 0;
@@ -151,9 +151,9 @@ $(function() {
         updateView();
     });
 
-    function propertyCellGap(defaultGap = 1) {
+    function propertyCellGap(defaultGap = 0.1) {
         var gap = parseFloat($valueCellGap.val());
-        return (gap !== NaN) ? gap : defaultGap;
+        return (gap !== NaN) ? gap / 10.0 : defaultGap;
     }
 
     // For the cell shape scale range
@@ -235,10 +235,16 @@ $(function() {
         var pageWidth = propertyPageWidth();
         var pageHeight = propertyPageHeight();
         if (pageWidth > pageHeight) {
-            newVal = Math.min(pageHeight/4, newVal);
+            if (newVal > pageHeight/4) {
+                setPropertyPagePadding(_padding);
+                return;
+            }
         }
         else {
-            newVal = Math.min(pageWidth/4, newVal);
+            if (newVal > pageWidth/4) {
+                setPropertyPagePadding(_padding);
+                return;
+            }
         }
     
         if (newVal !== _padding) {
@@ -350,7 +356,7 @@ $(function() {
         if (profile !== undefined && profile !== null) {
             _profileData = profile;
 
-            // Calc bouds of profile
+            // Calc bounds of profile
             _profileBounds.xmin = Infinity;
             _profileBounds.ymin = Infinity;
             _profileBounds.xmax = -Infinity;
@@ -467,10 +473,13 @@ $(function() {
         $valueClipCellsOutside.prop( "disabled", isEnabled || !hasProfile );
         $valueClipCellsIntersect.prop( "disabled", isEnabled || !hasProfile );
 
+        var cellStyle = propertyCellEdgeStyle();
+        var isShape = (cellStyle != CellEdgeStyle.Curved && cellStyle != CellEdgeStyle.Straight);
+        $valueCellGap.prop( "disabled", isShape );
+        $valueCellScale.prop( "disabled", !isShape );
+
         $valueCellEdgeStyle.prop( "disabled", isEnabled );
         $valueCellCount.prop( "disabled", isEnabled );
-        $valueCellGap.prop( "disabled", isEnabled );
-        $valueCellScale.prop( "disabled", isEnabled );
         $valueLloyds.prop( "disabled", isEnabled );
         $valuePagePadding.prop( "disabled", isEnabled );
     }
@@ -478,9 +487,8 @@ $(function() {
     // Change in the cell edge style
     function cellEdgeStyleChanged() {
 
-        var newStyle = propertyCellEdgeStyle();
-    
-        var isShape = (newStyle != CellEdgeStyle.Curved && newStyle != CellEdgeStyle.Straight);
+        var cellStyle = propertyCellEdgeStyle();
+        var isShape = (cellStyle != CellEdgeStyle.Curved && cellStyle != CellEdgeStyle.Straight);
         $valueCellGap.prop( "disabled", isShape );
         $valueCellScale.prop( "disabled", !isShape );
 
@@ -534,7 +542,7 @@ $(function() {
     // Voronoi generation
 
     const getDistance = (a, b) => Math.sqrt(Math.pow(a.x-b.x, 2)+Math.pow(a.y-b.y, 2))
-    const getSiteDistance = (a, b) => Math.sqrt(Math.pow(a[0]-b[0], 2)+Math.pow(a[1]-b[1], 2))
+    const getDistanceArray = (a, b) => Math.sqrt(Math.pow(a[0]-b[0], 2)+Math.pow(a[1]-b[1], 2))
 
     // Scale a cell by distance (pixels).  Assumes +distance is inward scaling.
     function scaleCellToDistance(path, distNew) {
@@ -578,7 +586,6 @@ $(function() {
 
         // And set the new scale.
         path.scale(newScale);
-        removeSmallBits(path);
     }
 
     function cellSitesCount() {
@@ -626,7 +633,8 @@ $(function() {
 
         var padding = cms2pixels(propertyPagePadding());
 
-        _voronoi = _delaunay.voronoi([padding, padding, padding + _pageWidthInner, padding + _pageHeightInner]);
+        // note: reducing bounds by a pixel so cells aren't clipped at edge
+        _voronoi = _delaunay.voronoi([padding + 1, padding + 1, padding + 1 + _pageWidthInner, padding + 1 + _pageHeightInner]);
     }
 
 
@@ -657,8 +665,8 @@ $(function() {
         _pageWidthInner = (pageWidth - 2 * padding);
         _pageHeightInner = (pageHeight - 2 * padding);
 
-        //console.log("Page Width = " + pageWidth + " Height = " + pageHeight);
-        //console.log("Page Inner Width = " + pageWidthInner + " Height = " + pageHeightInner);
+        // console.log("Page Width = " + pageWidth + " Height = " + pageHeight);
+        // console.log("Page Inner Width = " + _pageWidthInner + " Height = " + _pageHeightInner);
 
         // Create a set of random cell sites.  These are center points of each cell.
         var sites = [];
@@ -690,7 +698,7 @@ $(function() {
 
     const POINT_OP = {Add: 0, Sub: 1, Div: 2, Mul: 3};
 
-    // HACK!  Used for paper point ops.
+    // HACK!  Used for paper point ops.  They fail to work so this hack.
     // OP: arg1 OP arg2
     // Add: point + point
     // Sub: point - point
@@ -717,9 +725,23 @@ $(function() {
             var cur = segment.point;
             var nextSegment = segment.next;
             var next = nextSegment.point + nextSegment.handleIn;
-            if (cur.getDistance(next) < min) {
+            if (cur.getDistance(next, true) < min) {
                 segment.remove();
             }
+        }
+    }
+
+    function setCellPathAttributes(path, edgeStyle) {
+        if (path === null) return;
+
+        if (edgeStyle == CellEdgeStyle.Curved || edgeStyle == CellEdgeStyle.Straight) {
+            path.strokeColor = 'black';
+            path.fillColor = cellColor;
+        }
+        else {
+            // Symbol
+            path.strokeColor = 'black';
+            path.fillColor = cellColor;
         }
     }
 
@@ -740,9 +762,8 @@ $(function() {
 
         if (edgeStyle == CellEdgeStyle.Curved || edgeStyle == CellEdgeStyle.Straight) {
             path = new paper.Path();
-            path.strokeColor = 'black';
-            path.fillColor = cellColor;
             path.closed = true;
+            setCellPathAttributes(path, edgeStyle);
         }
         else {
             isSymbol = true;
@@ -769,7 +790,7 @@ $(function() {
             }
 
             // Convert mm to cm then to pixels. But only half since neighboring cells add to other half
-            var distNew = cms2pixels(propertyCellGap() / 10.0) / 2.0;
+            var distNew = cms2pixels(propertyCellGap() / 2.0);
             scaleCellToDistance(path, distNew);
             removeSmallBits(path);
         }
@@ -779,7 +800,7 @@ $(function() {
             for (const j of _voronoi.neighbors(index)) {
                 // Keep track of min distance from center to neighbor centers
                 const centerN = cellSiteAt(j);
-                var d = getSiteDistance(center, centerN);
+                var d = getDistanceArray(center, centerN);
                 if (d < minDistance) {
                     minDistance = d;
                 }
@@ -822,10 +843,9 @@ $(function() {
                 }
 
                 if (path !== null) {
+                    setCellPathAttributes(path, edgeStyle);
                     path.rotate(Math.random() * 360, pointCenter);
                     path.scale(propertyCellScale(), propertyCellScale(), pointCenter);
-                    path.strokeColor = 'black';
-                    path.fillColor = cellColor;
                 }
             }
         }
@@ -881,6 +901,11 @@ $(function() {
                     }
                 }
             }
+
+            _profilePathGap = _profilePath.clone(); //{ insert: true, deep: true });
+            _profilePathGap.strokeColor = 'purple';
+
+            scaleCellToDistance(_profilePathGap, cms2pixels(propertyPagePadding()));
         }
         else {
             _profilePath = null;
@@ -911,38 +936,55 @@ $(function() {
             return;
         }
 
-        // Will we need to clip voronoi cells outside and/or intersect profile?
-        var clipCellsOutside = propertyClipCellsOutside() && (_profilePath != null);
-        var clipCellsIntersect = propertyClipCellsIntersect() && (_profilePath != null);
-
         for (var i = 0, l = cellSitesCount(); i < l; i++) {
 
             var newPath = createVoronoiPath(i);
 
-            // Need to clip cell?
-            var removeCell = false;
+            // If there's a profile, handle clipping cells
+            if  (newPath !== null && _profilePath !== null && _profilePathGap !== null) {
 
-            if (clipCellsOutside) {
-                // If cell is outside profile then toss.
-                removeCell |= (!_profilePath.intersects(newPath) && !_profilePath.contains(newPath.position));
-            }
+                var removeCell = false;     // Set to true if cell to be clipped
 
-            if (newPath != null && clipCellsIntersect) {
-                // If cell intersects profile then toss.
-                removeCell |= _profilePath.intersects(newPath);
-            }
-
-            if (removeCell) {
-                newPath.remove();
-                newPath = null;
-            }
-            else {
-                // TEST: Show center point of cell
-                /*
                 var [xCenter, yCenter] = cellSiteAt(i);
-                var pathCenter = new paper.Path.Circle(new paper.Point(xCenter, yCenter), 5);
-                pathCenter.strokeColor = 'red';
-                */
+                var ptCenter = new paper.Point(xCenter, yCenter);
+
+                var isContained = _profilePathGap.contains(newPath.position);
+                var isIntersecting = _profilePathGap.intersects(newPath);
+
+                if (propertyClipCellsOutside()) {
+                    // If cell is outside profile then toss.
+                    removeCell |= (!isContained && !isIntersecting);
+                }
+
+                if (isIntersecting) {
+
+                    var paddingDist = 2 + cms2pixels(propertyPagePadding());
+
+                    // If cell intersects profile then toss if requested to.
+                    if (propertyClipCellsIntersect() || !_profilePathGap.contains(ptCenter)) {
+                        removeCell |= true;
+                    }
+                    // Else if cell center is within padding then toss cell
+                    else if (ptCenter.getDistance(_profilePathGap.getNearestLocation(ptCenter).point, true) <= paddingDist) {
+                        removeCell |= true;
+                    }
+                    else {
+                        var newPathMod = _profilePathGap.intersect(newPath);
+                        newPath.remove();
+                        newPath = newPathMod;
+                        setCellPathAttributes(newPath, propertyCellEdgeStyle());
+                    }
+                }
+
+                if (removeCell) {
+                    newPath.remove();
+                    newPath = null;
+                }
+                else {
+                    // TEST: Show center point of cell
+                    var pathCenter = new paper.Path.Circle(ptCenter, 4);
+                    pathCenter.strokeColor = isIntersecting ? 'yellow' : isContained ? 'green' : 'red';
+                }
             }
         }
     }

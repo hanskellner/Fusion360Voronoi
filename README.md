@@ -188,7 +188,7 @@ More information about the algorithm on [Wikipedia](https://en.wikipedia.org/wik
 
 ## Video Screencast 
 
-Please view the following screencast to see the Voronoi add-in in use (note: updated video coming soon):
+Please view the following screencast to see the Voronoi add-in in use:
 
 https://knowledge.autodesk.com/community/screencast/f3736c33-f135-481e-8d82-4a6fa9a56cd6
 
@@ -239,6 +239,7 @@ __**WARNING**__
 
 ## TODO and Issues
 
+- The Padding amount works well with rectangular profiles but not with angled ones.
 - Inserting a voronoi diagram with many cells may cause Fusion 360 to hang for a long time.  There may be no workaround on the add-in side.
 - When using a profile, the voronoi diagram *may* not be inserted at the offset of the profile.  The workaround is to:
     1. Edit the sketch containing the voronoi
