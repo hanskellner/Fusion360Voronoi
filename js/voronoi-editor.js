@@ -28,8 +28,8 @@ $(function() {
     const LLOYDS_OMEGA = 0.2;
 
     // Default page sizes for standard (inches) and metric (centimeters)
-    const DEFAULT_PAGE_WIDTH_STANDARD   = 8;
-    const DEFAULT_PAGE_HEIGHT_STANDARD  = 6; 
+    const DEFAULT_PAGE_WIDTH_STANDARD   = 6;
+    const DEFAULT_PAGE_HEIGHT_STANDARD  = 4; 
 
     const DEFAULT_PAGE_WIDTH_METRIC     = 20;
     const DEFAULT_PAGE_HEIGHT_METRIC    = 15;
@@ -1006,25 +1006,23 @@ $(function() {
         var prevScale = propertyViewScale();
         scaleView(1);
 
-        var mtxClone = paper.view.matrix.clone();
+        var mtxOrig = paper.view.matrix.clone();
+        var mtxScaled = paper.view.matrix.clone();
 
         if (forFusion360) {
             // The PPI of Fusion 360 is 96.  Check if we need to scale
             // because our PPI is different. HACK
             if (_dpi !== 0 && _dpi !== 96) {
                 var scaleFactor = 96/_dpi;
-                paper.view.matrix.scale(scaleFactor, new paper.Point(0,0));
+                mtxScaled.scale(scaleFactor, new paper.Point(0,0));
             }
-            
-            // console.log("propertyPageHeight() = " + propertyPageHeight());
-            // console.log("paper.view.matrix.ty = " + paper.view.matrix.ty);
         }
 
         // Get the SVG
-        var svg = paper.project.exportSVG({asString:true, bounds: 'content'});
+        var svg = paper.project.exportSVG({asString: true, bounds: 'content', matrix: mtxScaled});
 
         // Restore orientation and scale
-        paper.view.matrix = mtxClone;
+        paper.view.matrix = mtxOrig;
         scaleView(prevScale);
 
         // Force a redraw so border/profile are shown again
@@ -1102,6 +1100,19 @@ $(function() {
     // console.log("DPR = " + dpr);
     _dpi = paper.view.resolution;
     console.log("DPI = " + _dpi);
+
+    // if (_dpi !== 0 && _dpi !== 96) {
+    //     var scaleFactor = 96/_dpi;
+    //     showDebugText("SVG scale view factor = " + scaleFactor + " DPI = " + _dpi);
+    // }
+    // else {
+    //     showDebugText("DPI = " + _dpi);
+    // }
+
+    // Now setup again since we know correct dpi
+    canvas.width = cms2pixels(propertyPageWidth());
+    canvas.height = cms2pixels(propertyPageHeight());
+    paper.setup(canvas);
 
     _layerBorder = new paper.Layer();
     _layerBorder.name = 'Page Border';
