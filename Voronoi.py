@@ -321,7 +321,7 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
     def notify(self, args):
         try:
             global _app, _units, _widthVoronoi, _heightVoronoi
-            global _profileBoundsMin, _profileBoundsMax, _profilePoints, _profileSketchName, _constructionPlane
+            global _profileBoundsMin, _profileBoundsMax, _profilePoints, _selectedSketchName, _profileSketchName, _constructionPlane
             global _widthValueCommandInput, _heightValueCommandInput, _widthProfileStringValueCommandInput, _heightProfileStringValueCommandInput
 
             des = adsk.fusion.Design.cast(_app.activeProduct)
@@ -682,7 +682,7 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
             dySketchPos = (_profileBoundsMax.y - _profileBoundsMin.y) + _profileBoundsMin.y
 
         # import the temp svg file into the sketch.
-        retValue = theSketch.importSVG(_svgFilePath, 0, 0, 1) # (filePath, xPos, yPos, scale)
+        retValueImport = theSketch.importSVG(_svgFilePath, 0, 0, 1) # (filePath, xPos, yPos, scale)
 
         # HACK: the insert from SVG fixes the curves.  Unfix so that
         # they move when their associated points are moved.
@@ -694,6 +694,9 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
         moveSketch(theSketch, dxSketchPos, dySketchPos, 0)
 
         theSketch.isComputeDeferred = False
+
+        if not retValueImport:
+            print ("Failed to import generated temporary SVG file: " + _svgFilePath)
  
 def run(context):
     try:

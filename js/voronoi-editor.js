@@ -67,7 +67,8 @@ $(function() {
     var _delaunay = null;
     var _voronoi = null;
 
-    var _layerDefault = null;
+    var _layerBorder = null;
+    var _layerProfile = null;
     var _layerVoronoi = null;
 
     // TESTING PROFILE
@@ -97,7 +98,7 @@ $(function() {
 
     $('#downloadSVGBtn').on('click', function() {
 
-        var svg = generateSVG();    // Non-Fusion 360 generate
+        var svg = generateSVG(false);    // Non-Fusion 360 generate
 
         if (svg === null || svg === '') {
             // TODO: Display error to user.
@@ -414,7 +415,7 @@ $(function() {
     // Show Page Border
     const $valueShowPageBorder = $('#pageBorderCheckbox');
     $valueShowPageBorder.change( () => {
-        showHideBorders();
+        drawBorderAndProfile();
     });    
 
     function propertyShowPageBorder() {
@@ -853,80 +854,78 @@ $(function() {
         return path;
     }
     
-    function showHideBorders() {
+    function drawBorderAndProfile() {
 
-        if (_layerDefault == null) return;
+        // Create the border path
+        if (_layerBorder != null) {
+            _layerBorder.activate();
+            _layerBorder.removeChildren();
 
-        var prevLayer = paper.project.activeLayer;
-
-        // Populate the default layer with non-voronoi geometry
-        _layerDefault.activate();
-        _layerDefault.removeChildren();
-
-        if (propertyShowPageBorder()) {
-            var pathBounds = new paper.Path.Rectangle(
-                new paper.Point(0,0),
-                new paper.Point(cms2pixels(propertyPageWidth()), cms2pixels(propertyPageHeight())));
-            pathBounds.strokeColor = 'darkgray';
+            if (propertyShowPageBorder()) {
+                var pathBounds = new paper.Path.Rectangle(
+                    new paper.Point(0,0),
+                    new paper.Point(cms2pixels(propertyPageWidth()), cms2pixels(propertyPageHeight())));
+                pathBounds.strokeColor = 'darkgray';
+            }
         }
 
-        // Create profile path
-        var profile = propertyProfile();
-        if (profile.length > 0) {
-            //var width = cms2pixels(_profileBounds.xmax - _profileBounds.xmin);
-            var height = cms2pixels(_profileBounds.ymax - _profileBounds.ymin);
+        // Create profile path.  Note, we always need to create it if one is specified since
+        // it's used to clip cells.
+        if (_layerProfile != null) {
+            _layerProfile.activate();
+            _layerProfile.removeChildren();
 
-            // NOTE: Assumes the profile paths are sorted clockwise or counterclockwise
-            _profilePath = new paper.Path();
-            _profilePath.strokeColor = 'blue';
-            _profilePath.closed = false;    // REVIEW:
+            var profile = propertyProfile();
+            if (profile.length > 0) {
+                //var width = cms2pixels(_profileBounds.xmax - _profileBounds.xmin);
+                var height = cms2pixels(_profileBounds.ymax - _profileBounds.ymin);
 
-            var pxLast = null;
-            var pyLast = null;
+                // NOTE: Assumes the profile paths are sorted clockwise or counterclockwise
+                _profilePath = new paper.Path();
+                _profilePath.strokeColor = 'blue';
+                _profilePath.closed = false;
 
-            for (var iPath = 0; iPath < profile.length; ++iPath) {
-                var profPath = profile[iPath];
-                for (var iPt = 0; iPt < profPath.length; ++iPt) {
-                    var px = cms2pixels(Number(profPath[iPt].x)) - cms2pixels(_profileBounds.xmin);
-                    var py = height - (cms2pixels(Number(profPath[iPt].y)) - cms2pixels(_profileBounds.ymin));   // Flip because Paper Y+ downward
-                    if (pxLast == null) {
-                        pxLast = px;
-                        pyLast = py;
-                        _profilePath.add(new paper.Point(px, py));
-                    }
-                    else if (px != pxLast || py != pyLast) {
-                        _profilePath.add(new paper.Point(px, py));
-                        pxLast = px;
-                        pyLast = py;
+                var pxLast = null;
+                var pyLast = null;
+
+                for (var iPath = 0; iPath < profile.length; ++iPath) {
+                    var profPath = profile[iPath];
+                    for (var iPt = 0; iPt < profPath.length; ++iPt) {
+                        var px = cms2pixels(Number(profPath[iPt].x)) - cms2pixels(_profileBounds.xmin);
+                        var py = height - (cms2pixels(Number(profPath[iPt].y)) - cms2pixels(_profileBounds.ymin));   // Flip because Paper Y+ downward
+                        if (pxLast == null) {
+                            pxLast = px;
+                            pyLast = py;
+                            _profilePath.add(new paper.Point(px, py));
+                        }
+                        else if (px != pxLast || py != pyLast) {
+                            _profilePath.add(new paper.Point(px, py));
+                            pxLast = px;
+                            pyLast = py;
+                        }
                     }
                 }
+
+                _profilePathGap = _profilePath.clone(); //{ insert: true, deep: true });
+                _profilePathGap.strokeColor = 'purple';
+
+                scaleCellToDistance(_profilePathGap, cms2pixels(propertyPagePadding()));
             }
-
-            _profilePathGap = _profilePath.clone(); //{ insert: true, deep: true });
-            _profilePathGap.strokeColor = 'purple';
-
-            scaleCellToDistance(_profilePathGap, cms2pixels(propertyPagePadding()));
         }
-        else {
-            _profilePath = null;
-        }
-
-        // Re-activate the previous layer       
-        if (prevLayer !== null)
-            prevLayer.activate();
     }
 
     // Repopulating with new geometry
     function draw() {
 
         // Clear out previous versions
-        _layerDefault.removeChildren();
+        _layerBorder.removeChildren();
+        _layerProfile.removeChildren();
         _layerVoronoi.removeChildren();
     
         ctx.setTransform(1, 0, 0, 1, 0, 0); // reset scale
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        showHideBorders();
+        drawBorderAndProfile();
 
         // Populate the voronoi layer
         _layerVoronoi.activate();
@@ -973,6 +972,10 @@ $(function() {
                         newPath.remove();
                         newPath = newPathMod;
                         setCellPathAttributes(newPath, propertyCellEdgeStyle());
+                        
+                        // Need to reparent from profile layer back to Voronoi layer
+                        newPath.remove();
+                        _layerVoronoi.addChild(newPath);
                     }
                 }
 
@@ -982,8 +985,8 @@ $(function() {
                 }
                 else {
                     // TEST: Show center point of cell
-                    var pathCenter = new paper.Path.Circle(ptCenter, 4);
-                    pathCenter.strokeColor = isIntersecting ? 'yellow' : isContained ? 'green' : 'red';
+                    // var pathCenter = new paper.Path.Circle(ptCenter, 4);
+                    // pathCenter.strokeColor = isIntersecting ? 'yellow' : isContained ? 'green' : 'red';
                 }
             }
         }
@@ -992,18 +995,16 @@ $(function() {
     /////////////////////////////////////////////////////////////////////////
     // SVG Export
 
-    function generateSVG(forFusion360 = false) {
+    function generateSVG(forFusion360) {
+
+        // Remove border and profile since even invisible they will be
+        // exported to SVG
+        _layerBorder.removeChildren();
+        _layerProfile.removeChildren();
+
         // Save previous scale then scale to 1:1 so SVG exported correctly
         var prevScale = propertyViewScale();
         scaleView(1);
-
-        // Hide border/profile layer
-        _layerDefault.visible = false;
-
-        // Hide profile since even invisible it will be exported and visible in Fusion 360
-        if (_profilePath != null) {
-            _profilePath.remove();
-        }
 
         var mtxClone = paper.view.matrix.clone();
 
@@ -1020,19 +1021,14 @@ $(function() {
         }
 
         // Get the SVG
-        var svg = paper.project.exportSVG({asString:true});
-
-        // Restore profile
-        if (_profilePath != null) {
-           _layerDefault.addChild(_profilePath);
-        }
-
-        // Show border/profile layer
-        _layerDefault.visible = true;
+        var svg = paper.project.exportSVG({asString:true, bounds: 'content'});
 
         // Restore orientation and scale
         paper.view.matrix = mtxClone;
         scaleView(prevScale);
+
+        // Force a redraw so border/profile are shown again
+        updateView();
 
         return svg;
     }
@@ -1107,8 +1103,12 @@ $(function() {
     _dpi = paper.view.resolution;
     console.log("DPI = " + _dpi);
 
-    _layerDefault = paper.project.activeLayer;
+    _layerBorder = new paper.Layer();
+    _layerBorder.name = 'Page Border';
+    _layerProfile = new paper.Layer();
+    _layerProfile.name = 'Profile';
     _layerVoronoi = new paper.Layer();
+    _layerVoronoi.name = 'Voronoi';
 
     var _updateView = false;    // True if draw() should be called
 
