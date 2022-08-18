@@ -202,23 +202,23 @@ https://autode.sk/2S2jpR5
 
 I have been asked how to project a Voronoi sketch onto a sphere.  Please take a look at this nice tutorial that I found:
 
-![Fusion 360 - Surface Details on a Sphere](https://youtu.be/JYCtPI6A8H4)
+  Fusion 360 - Surface Details on a Sphere: https://youtu.be/JYCtPI6A8H4
 
 I tried it out and it does work. But there are a few issues.
 
 One workaround is needed at the point you want to create the Voronoi sketch.  Here are the steps:
 
-# Run the Voronoi add-in
-  # In the dialog, select the sketch you created on the offset plane.
-  # Enter the width and height so that it matched the rectangle that bounds the sphere.
-  # Click the Voronoi Editor button
-# Create the Voronoi pattern you desire then click Publish to Fusion 360
-# The Voronoi will be added as a new Sketch. This is where the workaround begins as it should have been added to the selected sketch.
-# Edit the sketch containing the Voronoi. Select the sketch profiles and point. Then select Copy from the context menu.
-# Close the sketch and edit the sketch you created on the offset plane.
-# Click Paste in the context menu to paste the Voronoi sketch.
-# Now select and move it to the correct location.
-# Continue on as shown in the video
+1. Run the Voronoi add-in
+    1. In the dialog, select the sketch you created on the offset plane.
+    1. Enter the width and height so that it matched the rectangle that bounds the sphere.
+    1. Click the Voronoi Editor button
+1. Create the Voronoi pattern you desire then click Publish to Fusion 360
+1. The Voronoi will be added as a new Sketch. This is where the workaround begins as it should have been added to the selected sketch.
+1. Edit the sketch containing the Voronoi. Select the sketch profiles and point. Then select Copy from the context menu.
+1. Close the sketch and edit the sketch you created on the offset plane.
+1. Click Paste in the context menu to paste the Voronoi sketch.
+1. Now select and move it to the correct location.
+1. Continue on as shown in the video
 
 Sorry for the work-around. Will try to figure it out.
 
