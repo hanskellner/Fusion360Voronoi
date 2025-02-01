@@ -55,8 +55,7 @@ _selectedSketchName = ''
 # Set to the points that roughly define the selected profile
 _profilePoints = []
 _profileSketchName = ''
-_profileBoundsMin = None
-_profileBoundsMax = None
+_profileOrigin = None
 
 _svgFilePath = ''
 
@@ -73,11 +72,10 @@ _applyProfileSizeBoolValueInput = adsk.core.BoolValueCommandInput.cast(None)
 
 # Reset some of the variables before dialog appears
 def resetState():
-    global _profilePoints, _profileSketchName, _profileBoundsMin, _profileBoundsMax, _selectedSketchName, _svgFilePath
+    global _profilePoints, _profileSketchName, _profileOrigin, _selectedSketchName, _svgFilePath
     _profilePoints = []
     _profileSketchName = ''
-    _profileBoundsMin = None
-    _profileBoundsMax = None
+    _profileOrigin = None
     _selectedSketchName = ''
     _svgFilePath = ''
 
@@ -201,8 +199,11 @@ def getProfileBounds(profile):
 
     if outerLoop == None:
         return None
+    else:
+        return profile.boundingBox # Return the BBOX for the profile since it's got an outer loop
 
-    # Get the combined bbox for the outer loop's curves
+    """    # Get the combined bbox for the outer loop's curves
+    # This is no longer needed.  Also was returning bounds outside profile
     bbox = None
     for iCurve in range(outerLoop.profileCurves.count):
         curve = outerLoop.profileCurves.item(iCurve)
@@ -212,7 +213,7 @@ def getProfileBounds(profile):
             bbox.combine(curve.boundingBox)
 
     return bbox
-
+    """
 
 # Get the selected profile; otherwise None
 def getSelectedProfile():
@@ -226,9 +227,8 @@ def getSelectedProfile():
         # REVIEW: Do we need to test for all Profile subclasses?
         if theSelection.entity.objectType == adsk.fusion.Profile.classType():
             profile = theSelection.entity
-            bbox = getProfileBounds(profile)
             name = profile.parentSketch.name
-
+            bbox = getProfileBounds(profile)
             #print("Profile bounds: {0},{1},{2} - {3},{4},{5}".format(bbox.minPoint.x,bbox.minPoint.y,bbox.minPoint.z,bbox.maxPoint.x,bbox.maxPoint.y,bbox.maxPoint.z))
 
     # Nothing selected or a Sketch selected
@@ -237,41 +237,11 @@ def getSelectedProfile():
 
 # HACK: the insert from SVG fixes the curves.  Use this to unfix so that
 # they move when their associated points are moved.
-def setFixedSketchPoints(aSketch, flag):
+def setFixedSketchPoints(sketchCurves, flag):
     try:
-        # NOTE: throws an exception
-        #for curve in aSketch.sketchCurves:
-        #    curve.isFixed = False
-        for iCurve in range(aSketch.sketchCurves.count):
-            curve = aSketch.sketchCurves.item(iCurve)
+        for iCurve in range(sketchCurves.count):
+            curve = sketchCurves.item(iCurve)
             curve.isFixed = flag
-    except:
-        if _ui:
-            _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
-
-
-# NOTE: This is a very computation expensive operation.  It can take several
-# minutes to perform depending on the complexity of the sketch.
-def moveSketch(aSketch, dx, dy, dz):
-    try:
-
-        coll = adsk.core.ObjectCollection.create()
-
-        for iCrv in range(aSketch.sketchCurves.count):
-            coll.add(aSketch.sketchCurves.item(iCrv))
-
-        for iPt in range(aSketch.sketchPoints.count):
-            coll.add(aSketch.sketchPoints.item(iPt))
-
-        # See for Matrix3D help
-        # https://forums.autodesk.com/t5/fusion-360-api-and-scripts/interpreting-matrix3d-data/td-p/6069180
-        transform = adsk.core.Matrix3D.create()
-        transform.translation = adsk.core.Vector3D.create(dx, dy, dz)
-        resMove = aSketch.move(coll, transform)
-
-        if not resMove:
-            print("Failed to mve sketch elements!")
-
     except:
         if _ui:
             _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
@@ -320,8 +290,7 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
         super().__init__()
     def notify(self, args):
         try:
-            global _app, _units, _widthVoronoi, _heightVoronoi
-            global _profileBoundsMin, _profileBoundsMax, _profilePoints, _selectedSketchName, _profileSketchName, _constructionPlane
+            global _app, _units, _widthVoronoi, _heightVoronoi, _profilePoints, _profileOrigin, _profileSketchName, _constructionPlane
             global _widthValueCommandInput, _heightValueCommandInput, _widthProfileStringValueCommandInput, _heightProfileStringValueCommandInput
 
             des = adsk.fusion.Design.cast(_app.activeProduct)
@@ -348,12 +317,12 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
 
                     _profilePoints = getProfilePoints(profile)
                     _profileSketchName = profileSketchName
-                    _profileBoundsMin = bboxProfile.minPoint
-                    _profileBoundsMax = bboxProfile.maxPoint
+                    _profileOrigin = bboxProfile.minPoint
                 else:
                     _widthProfileStringValueCommandInput.value = "0.0"
                     _heightProfileStringValueCommandInput.value = "0.0"
                     _profilePoints = []
+                    _profileOrigin = None
 
                 _widthProfileStringValueCommandInput.isVisible = (profile != None)
                 _heightProfileStringValueCommandInput.isVisible = (profile != None)
@@ -635,7 +604,7 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
         eventArgs = adsk.core.CommandEventArgs.cast(args)
 
         global _app, _svgFilePath, _selectedSketchName, _constructionPlane
-        global _profileBoundsMin, _profileBoundsMax, _profileSketchName
+        global _profileOrigin, _profileSketchName, _heightVoronoi, _widthVoronoi
 
         if _svgFilePath == '':
             print("ERROR: Missing the SVG filepath")
@@ -646,7 +615,7 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
         rootComp = design.rootComponent
 
         theSketch = None
-        
+
         if _selectedSketchName != '':
             theSketch = rootComp.sketches.itemByName(_selectedSketchName)
         elif _profileSketchName != '':
@@ -666,37 +635,29 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
 
         theSketch.isComputeDeferred = True  # Help to speed up import
 
-        # DEFECT: API call below is not honoring the xpos, ypos values.
-        # DEFECT: API call is not positioning and orienting the SVG the same as UI Insert SVG file does.
-        #xDirSketch = theSketch.xDirection   # Vector3D
-        #yDirSketch = theSketch.yDirection
-        #print("Sketch X Dir = {0},{1},{2}".format(xDirSketch.x,xDirSketch.y,xDirSketch.z))
-        #print("Sketch Y Dir = {0},{1},{2}".format(yDirSketch.x,yDirSketch.y,yDirSketch.z))
+        xPos = 0
+        yPos = 0
 
-        dxSketchPos = 0
-        dySketchPos = 0
-
-        # If profile selected, need to shift to match lower left corner of profile.  See moveSketch() below.
-        if _profileSketchName != '' and _profileBoundsMin != None:
-            dxSketchPos = _profileBoundsMin.x
-            dySketchPos = (_profileBoundsMax.y - _profileBoundsMin.y) + _profileBoundsMin.y
-
+        if _profileSketchName != '' and _profileOrigin != None:
+            xPos = _profileOrigin.x
+            yPos = _profileOrigin.y + _heightVoronoi
+            #print("Profile XY Orig = {0},{1}".format(xPos, yPos))
+        else:
+            yPos = _heightVoronoi
+        
         # import the temp svg file into the sketch.
-        retValueImport = theSketch.importSVG(_svgFilePath, 0, 0, 1) # (filePath, xPos, yPos, scale)
+        retValue = theSketch.importSVG(_svgFilePath, xPos, yPos, 1)    # (filePath, xPos, yPos, scale)
 
-        # HACK: the insert from SVG fixes the curves.  Unfix so that
-        # they move when their associated points are moved.
-        setFixedSketchPoints(theSketch, False)
-
-        # HACK: The importSVG() call is not honoring the yPos param.  Manually shift
-        # the sketch here so it's in the correct location.
-        # NOTE: See performance issue with moveSketch()
-        moveSketch(theSketch, dxSketchPos, dySketchPos, 0)
+        # Check if the import was successful
+        if retValue == False:
+            if _ui:
+                _ui.messageBox('Failed to import the Voronoi.  Unable to continue.')
+        else:
+            # HACK: the insert from SVG can add contraints to fix the curves.  Unfix so that
+            # they are are movable.
+            setFixedSketchPoints(theSketch.sketchCurves, False)
 
         theSketch.isComputeDeferred = False
-
-        if not retValueImport:
-            print ("Failed to import generated temporary SVG file: " + _svgFilePath)
  
 def run(context):
     try:
