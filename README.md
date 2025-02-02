@@ -1,12 +1,12 @@
-# ![Fusion360Voronoi](./resources/32x32.png) Voronoi Sketch Generator for Fusion 360
+# ![Fusion360Voronoi](./resources/32x32.png) Voronoi Sketch Generator for Autodesk Fusion
 
 ![Voronoi on a glass](./images/VoronoiSketchGenerator_2022-Aug.jpg)
 
 ![Voronoi on a sphere](./images/Voronoi_on_Sphere_2022-Aug-17_sm.jpg)
 
-This is an [Autodesk Fusion 360](http://fusion360.autodesk.com/) add-in for generating Voronoi diagrams.  Once created, a Voronoi diagram is inserted into a sketch and then may be used for creating or modifying models.
+This is an [Autodesk Fusion](http://fusion360.autodesk.com/) add-in for generating Voronoi diagrams.  Once created, a Voronoi diagram is inserted into a sketch and then may be used for creating or modifying models.
 
-![Fusion 360 Voronoi Add-In](./resources/Voronoi-tooltip.png)
+![Fusion Voronoi Add-In](./resources/Voronoi-tooltip.png)
 
 It's possible to select an existing sketch, a sketch profile, or one of the (XY, XZ, YZ) construction planes as the target of the generated diagram.  When a sketch profile is selected, it will be used to define the bounds and to clip the generated diagram.
 
@@ -49,13 +49,13 @@ Note, installing the add-in into the Fusion 360 Addins folder allows it to autom
 1. With your Finder or File Explorer window, locate the AddIns folder.
 1. Create a folder within the AddIns folder with the same name as the add-in.  In this case, "Voronoi".
 1. Extract all of the add-in files from the (ZIP) archive and place them in this folder.
-1. Now the add-in is ready for Fusion 360.  Start Fusion 360.
+1. Now the add-in is ready for Fusion.  Start Fusion 360.
 1. Display the Scripts and Add-Ins dialog.  The "Voronoi" add-in should be listed.
 1. See the *Usage* section below for running and using.
 
 > As an alternative to the above installation location, you can just place the files in their own folder within a location of your choice.  For example, in your Documents or Home folder.  Doing this means the add-in will not automatically appear in the add-ins list.  You will need to manually add it using the "+" button at the top of the list.
 
-There is additional installation help on the Fusion 360 site:
+There is additional installation help on the Fusion site:
 
 https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcarticles/sfdcarticles/How-to-install-an-ADD-IN-and-Script-in-Fusion-360.html
 
@@ -93,8 +93,8 @@ https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcartic
 
     * On the top title bar are:
         - Left button toggles the settings palette opened or closed.
-        - Download SVG button can be used to download the diagram to a local drive.
-        - Publish button will add the diagram into Fusion 360.
+        - Publish button will add the diagram into Fusion.
+        - Download SVG button can be used to download the diagram to a local drive.  (Standalone version only)
     * On the left side of the palette are the settings that control the voronoi generation.  See below for details.
         - **Cell Style**
             This dropdown is used to define how the cells are rendered.  The first two, Curves and Straight, create the two most common style of voronoi patterns.  The remaining options are shapes/symbols.  Selecting a shape will cause one to be inserted at the centroid of each cell and scaled to fit within the cell.  Note that the scaling is not perfect at the moment.  The rotation of each symbol is also set to a random value.
@@ -188,9 +188,11 @@ And here's a box with a Voronoi stars pattern cut into the top surface:
 
 More information about the algorithm on [Wikipedia](https://en.wikipedia.org/wiki/Lloyd%27s_algorithm).
 
-## Video Screencast 
+## Video Tutorials 
 
-Please view the following screencast to see the Voronoi add-in in use:
+There are a bunch of really well done tutorial videos on YouTube.
+
+There's also the following screencast to see the Voronoi add-in in use:
 
 https://knowledge.autodesk.com/community/screencast/f3736c33-f135-481e-8d82-4a6fa9a56cd6
 
@@ -212,7 +214,7 @@ One workaround is needed at the point you want to create the Voronoi sketch.  He
     1. In the dialog, select the sketch you created on the offset plane.
     1. Enter the width and height so that it matched the rectangle that bounds the sphere.
     1. Click the Voronoi Editor button
-1. Create the Voronoi pattern you desire then click Publish to Fusion 360
+1. Create the Voronoi pattern you desire then click Publish to Fusion
 1. The Voronoi will be added as a new Sketch. This is where the workaround begins as it should have been added to the selected sketch.
 1. Edit the sketch containing the Voronoi. Select the sketch profiles and point. Then select Copy from the context menu.
 1. Close the sketch and edit the sketch you created on the offset plane.
@@ -221,6 +223,22 @@ One workaround is needed at the point you want to create the Voronoi sketch.  He
 1. Continue on as shown in the video
 
 Sorry for the work-around. Will try to figure it out.
+
+## TODO and Issues
+
+- Vosonoi patterns with straight lines will have fixed contraints automatically added by Fusion on import. If the lines of the cells are all black, then that is what has happened. To be able to edit/move/etc the voronoi cells, you must Unlock the lines using these steps:
+    1. Edit the sketch containing the voronoi
+    2. Click on the Fix/UnFix constraint button from the toolbar (looks like a lock)
+    3. The the Unfix tool active, drag a selection box around all of the voronoi elements
+        - On release from selection the lines should all turn blue.  If any are still black, try the steps above again.
+- The Padding amount works well with rectangular profiles but not with angled ones.
+- Inserting a voronoi diagram with many cells may cause Fusion to hang for a long time.  There may be no workaround on the add-in side.
+- When using a profile, the voronoi diagram *may* not be inserted at the offset of the profile.  The workaround is to:
+    1. Edit the sketch containing the voronoi
+    2. Change the 'Select->Selection Filters' to select only Sketch Points.
+    3. Window or Freeform select all of the voronoi cells.
+    4. Select Move/Copy and move the points to the correct offset.  Note, moving the points will also move the cell curves.
+- Issue with Voronoi not be added to selected sketch.
 
 ## Examples
 
@@ -232,7 +250,9 @@ Sorry for the work-around. Will try to figure it out.
 
 Other examples posted on my [Fusion 360 project gallery](https://fusion360.autodesk.com/projects/voronoi-script).
 
-## BETA Stuff
+## Work-In-Progress Features
+
+Warning: These may or may not work!
 
 **Voronoi Cell Editor**
 
@@ -262,17 +282,6 @@ __**WARNING**__
 - The shape of a cell is altered as soon as a control point is modified or added.
 - You can lose all your changes if you disable the cell editor (uncheck) and then change one of the controls.
 - This is work-in-progress and there's no guarantee it will work.
-
-## TODO and Issues
-
-- The Padding amount works well with rectangular profiles but not with angled ones.
-- Inserting a voronoi diagram with many cells may cause Fusion 360 to hang for a long time.  There may be no workaround on the add-in side.
-- When using a profile, the voronoi diagram *may* not be inserted at the offset of the profile.  The workaround is to:
-    1. Edit the sketch containing the voronoi
-    2. Change the 'Select->Selection Filters' to select only Sketch Points.
-    3. Window or Freeform select all of the voronoi cells.
-    4. Select Move/Copy and move the points to the correct offset.  Note, moving the points will also move the cell curves.
-- Issue with Voronoi not be added to selected sketch.
 
 ## Credits
 
