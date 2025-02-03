@@ -226,7 +226,8 @@ Sorry for the work-around. Will try to figure it out.
 
 ## TODO and Issues
 
-- Vosonoi patterns with straight lines will have fixed contraints automatically added by Fusion on import. If the lines of the cells are all black, then that is what has happened. To be able to edit/move/etc the voronoi cells, you must Unlock the lines using these steps:
+- When creating a voronoi within a sketch profile with curves will have issues if padding is applied.  The scaled profile will not be evenly spaced around the non-padded profile.  If the profile has straight lines, it works correctly.
+- Voronoi patterns with straight lines will have fixed contraints automatically added by Fusion on import. If the lines of the cells are all black, then that is what has happened. To be able to edit/move/etc the voronoi cells, you must Unlock the lines using these steps:
     1. Edit the sketch containing the voronoi
     2. Click on the Fix/UnFix constraint button from the toolbar (looks like a lock)
     3. The the Unfix tool active, drag a selection box around all of the voronoi elements
