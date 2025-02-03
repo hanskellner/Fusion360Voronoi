@@ -628,16 +628,75 @@ $(function() {
 
     function generateVoronoi() {
 
-        //console.time('delaunay');
         _delaunay = d3.Delaunay.from(_cellSitesRelaxed);
-        //console.timeEnd('delaunay');
 
         var padding = cms2pixels(propertyPagePadding());
 
+        let xMin = padding + 1;
+        let yMin = padding + 1;
+        let xMax = xMin + _pageWidthInner - 1;
+        let yMax = yMin + _pageHeightInner - 1;
+
+        let profilePath = _profilePathGap !== null ? _profilePathGap : _profilePath;
+        if (profilePath !== null) {
+            xMin = profilePath.bounds.x;
+            yMin = profilePath.bounds.y;
+            xMax = profilePath.bounds.x + profilePath.bounds.width;
+            yMax = profilePath.bounds.y + profilePath.bounds.height;
+        }
+
         // note: reducing bounds by a pixel so cells aren't clipped at edge
-        _voronoi = _delaunay.voronoi([padding + 1, padding + 1, padding + 1 + _pageWidthInner, padding + 1 + _pageHeightInner]);
+        _voronoi = _delaunay.voronoi([xMin, yMin, xMax, yMax]);
     }
 
+    function createProfilePath() {
+        // Create profile path.
+        if (_layerProfile != null) {
+            _layerProfile.activate();
+            _layerProfile.removeChildren();
+
+            var profile = propertyProfile();
+            if (profile.length > 0) {
+                //var width = cms2pixels(_profileBounds.xmax - _profileBounds.xmin);
+                var height = cms2pixels(_profileBounds.ymax - _profileBounds.ymin);
+
+                // NOTE: Assumes the profile paths are sorted clockwise or counterclockwise
+                _profilePath = new paper.Path();
+                _profilePath.strokeColor = 'blue';
+                _profilePath.closed = false;
+
+                var pxLast = null;
+                var pyLast = null;
+
+                for (var iPath = 0; iPath < profile.length; ++iPath) {
+                    var profPath = profile[iPath];
+                    for (var iPt = 0; iPt < profPath.length; ++iPt) {
+                        var px = cms2pixels(Number(profPath[iPt].x)) - cms2pixels(_profileBounds.xmin);
+                        var py = height - (cms2pixels(Number(profPath[iPt].y)) - cms2pixels(_profileBounds.ymin));   // Flip because Paper Y+ downward
+                        if (pxLast == null) {
+                            pxLast = px;
+                            pyLast = py;
+                            _profilePath.add(new paper.Point(px, py));
+                        }
+                        else if (px != pxLast || py != pyLast) {
+                            _profilePath.add(new paper.Point(px, py));
+                            pxLast = px;
+                            pyLast = py;
+                        }
+                    }
+                }
+
+                _profilePathGap = _profilePath.clone(); //{ insert: true, deep: true });
+                _profilePathGap.strokeColor = 'purple';
+
+                scaleCellToDistance(_profilePathGap, cms2pixels(propertyPagePadding()));
+            }
+        }
+        else {
+            _profilePath = null;
+            _profilePathGap = null;
+        }
+    }
 
     /////////////////////////////////////////////////////////////////////////
     // Cell site generation
@@ -645,17 +704,22 @@ $(function() {
     var _pageWidthInner = 1;
     var _pageHeightInner = 1;
 
-    function generateCellSites(count) {
+    function generateCellSites(countCells) {
 
         var pageWidth = cms2pixels(propertyPageWidth());
         var pageHeight = cms2pixels(propertyPageHeight());
         var padding = cms2pixels(propertyPagePadding());
 
-        // Is there a profile path
-        var profile = propertyProfile();
-        if (profile.length > 0) {
-            pageWidth = cms2pixels(_profileBounds.xmax - _profileBounds.xmin);
-            pageHeight = cms2pixels(_profileBounds.ymax - _profileBounds.ymin);
+        // Creqate the profile path if one is specified.  Note, always need
+        // to create it if one is specified since it's used to clip cells.
+        createProfilePath();
+
+        let profilePath = _profilePathGap !== null ? _profilePathGap : _profilePath;
+        if (profilePath !== null) {
+            // Get the width and height of the profile path
+            // REVIEW: What about _profileBounds?
+            pageWidth = profilePath.internalBounds.width;
+            pageHeight = profilePath.internalBounds.height;
         }
 
         if (pageWidth > pageHeight)
@@ -663,17 +727,48 @@ $(function() {
         else
             padding = Math.min(pageWidth/4, padding);
 
-        _pageWidthInner = (pageWidth - 2 * padding);
-        _pageHeightInner = (pageHeight - 2 * padding);
+        if (profilePath !== null) {
+            // Padding already handled in profile path
+            _pageWidthInner = pageWidth;
+            _pageHeightInner = pageHeight;
+        }
+        else {
+            _pageWidthInner = (pageWidth - 2 * padding);
+            _pageHeightInner = (pageHeight - 2 * padding);
+        }
 
         // console.log("Page Width = " + pageWidth + " Height = " + pageHeight);
         // console.log("Page Inner Width = " + _pageWidthInner + " Height = " + _pageHeightInner);
 
         // Create a set of random cell sites.  These are center points of each cell.
         var sites = [];
-        for (var iCells = 0; iCells < count; ++iCells) {
-            var site = [nextRandomNumber() * _pageWidthInner + padding, nextRandomNumber() * _pageHeightInner + padding];
-            sites.push(site);
+
+        // Create a set of random cell sites.  These are center points of each cell.
+        // The sites must fall within the bounds of the Paper.js profile gap path if
+        // it exists.  Otherwise, within the profile path.
+        if (profilePath !== null) {
+            sites = [];
+            for (var iCells = 0; iCells < countCells; ++iCells) {
+                var siteX = nextRandomNumber() * _pageWidthInner + padding;
+                var siteY = nextRandomNumber() * _pageHeightInner + padding;
+                
+                if (profilePath.contains(new paper.Point(siteX, siteY))) {
+                    sites.push([siteX, siteY]);
+                }
+                else {
+                    --iCells; // Try again
+                }
+
+                if (sites.length >= countCells) {
+                    break;
+                }
+            }
+        }
+        else {
+            for (var iCells = 0; iCells < countCells; ++iCells) {
+                var site = [nextRandomNumber() * _pageWidthInner + padding, nextRandomNumber() * _pageHeightInner + padding];
+                sites.push(site);
+            }
         }
 
         return sites;
@@ -869,49 +964,7 @@ $(function() {
             }
         }
 
-        // Create profile path.  Note, we always need to create it if one is specified since
-        // it's used to clip cells.
-        if (_layerProfile != null) {
-            _layerProfile.activate();
-            _layerProfile.removeChildren();
-
-            var profile = propertyProfile();
-            if (profile.length > 0) {
-                //var width = cms2pixels(_profileBounds.xmax - _profileBounds.xmin);
-                var height = cms2pixels(_profileBounds.ymax - _profileBounds.ymin);
-
-                // NOTE: Assumes the profile paths are sorted clockwise or counterclockwise
-                _profilePath = new paper.Path();
-                _profilePath.strokeColor = 'blue';
-                _profilePath.closed = false;
-
-                var pxLast = null;
-                var pyLast = null;
-
-                for (var iPath = 0; iPath < profile.length; ++iPath) {
-                    var profPath = profile[iPath];
-                    for (var iPt = 0; iPt < profPath.length; ++iPt) {
-                        var px = cms2pixels(Number(profPath[iPt].x)) - cms2pixels(_profileBounds.xmin);
-                        var py = height - (cms2pixels(Number(profPath[iPt].y)) - cms2pixels(_profileBounds.ymin));   // Flip because Paper Y+ downward
-                        if (pxLast == null) {
-                            pxLast = px;
-                            pyLast = py;
-                            _profilePath.add(new paper.Point(px, py));
-                        }
-                        else if (px != pxLast || py != pyLast) {
-                            _profilePath.add(new paper.Point(px, py));
-                            pxLast = px;
-                            pyLast = py;
-                        }
-                    }
-                }
-
-                _profilePathGap = _profilePath.clone(); //{ insert: true, deep: true });
-                _profilePathGap.strokeColor = 'purple';
-
-                scaleCellToDistance(_profilePathGap, cms2pixels(propertyPagePadding()));
-            }
-        }
+        // REVIEW: Recreate profile path?
     }
 
     // Repopulating with new geometry
@@ -919,7 +972,7 @@ $(function() {
 
         // Clear out previous versions
         _layerBorder.removeChildren();
-        _layerProfile.removeChildren();
+        //_layerProfile.removeChildren();
         _layerVoronoi.removeChildren();
     
         ctx.setTransform(1, 0, 0, 1, 0, 0); // reset scale
@@ -1024,6 +1077,9 @@ $(function() {
         // Restore orientation and scale
         paper.view.matrix = mtxOrig;
         scaleView(prevScale);
+
+        // Recreate profile if there was one.
+        createProfilePath();
 
         // Force a redraw so border/profile are shown again
         updateView();
