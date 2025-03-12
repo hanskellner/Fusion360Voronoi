@@ -24,40 +24,15 @@ https://hanskellner.github.io/Fusion360Voronoi/Voronoi.html
 
 ## Installation
 
-Please see the most recent install instructions here:
+Please see the Fusion add-in install instructions here:
 
-https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcarticles/sfdcarticles/How-to-install-an-ADD-IN-and-Script-in-Fusion-360.html 
+https://www.autodesk.com/support/technical/article/caas/sfdcarticles/sfdcarticles/How-to-install-an-ADD-IN-and-Script-in-Fusion-360.html
 
 If you are installing manually, then please download the archive file (ZIP) from Github by clicking on the "Clone or download" button and then selecting "Download ZIP".
 
 Once you have the ZIP file, please follow the manual install instructions in the link above.
 
-Note, installing the add-in into the Fusion 360 Addins folder allows it to automatically be found and displayed in the add-ins list.
-
-### Mac Add-Ins Folder
-
-```
-"$HOME/Library/Application Support/Autodesk/Autodesk Fusion 360/API/AddIns/"
-```
-
-### Windows Add-Ins Folder
-
-```
-"C:\Users\%YOUR_USER_NAME%\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns"
-```
-
-1. With your Finder or File Explorer window, locate the AddIns folder.
-1. Create a folder within the AddIns folder with the same name as the add-in.  In this case, "Voronoi".
-1. Extract all of the add-in files from the (ZIP) archive and place them in this folder.
-1. Now the add-in is ready for Fusion.  Start Fusion 360.
-1. Display the Scripts and Add-Ins dialog.  The "Voronoi" add-in should be listed.
-1. See the *Usage* section below for running and using.
-
-> As an alternative to the above installation location, you can just place the files in their own folder within a location of your choice.  For example, in your Documents or Home folder.  Doing this means the add-in will not automatically appear in the add-ins list.  You will need to manually add it using the "+" button at the top of the list.
-
-There is additional installation help on the Fusion site:
-
-https://knowledge.autodesk.com/support/fusion-360/troubleshooting/caas/sfdcarticles/sfdcarticles/How-to-install-an-ADD-IN-and-Script-in-Fusion-360.html
+Note, installing the add-in into the Fusion add-ins folder allows it to be found automatically and displayed in the add-ins list.
 
 ## Usage
 
@@ -190,21 +165,13 @@ More information about the algorithm on [Wikipedia](https://en.wikipedia.org/wik
 
 ## Video Tutorials 
 
-There are a bunch of really well done tutorial videos on YouTube.
-
-There's also the following screencast to see the Voronoi add-in in use:
-
-https://knowledge.autodesk.com/community/screencast/f3736c33-f135-481e-8d82-4a6fa9a56cd6
-
-Here's a video for previous version of the add-in:
-
-https://autode.sk/2S2jpR5
+There are some really well done tutorial videos on [YouTube](https://www.youtube.com/results?search_query=fusion+voronoi+sketch+generator).
 
 ## Projecting onto a Sphere
 
-I have been asked how to project a Voronoi sketch onto a sphere.  Please take a look at this nice tutorial that I found:
+I have been asked how to project a Voronoi sketch onto a sphere.  Please take a look at this nice tutorial that I found that explains projecting onto a surface:
 
-  Fusion 360 - Surface Details on a Sphere: https://youtu.be/JYCtPI6A8H4
+  [YouTube - Fusion 360 - Surface Details on a Sphere](https://youtu.be/JYCtPI6A8H4)
 
 I tried it out and it does work. But there are a few issues.
 
@@ -226,7 +193,7 @@ Sorry for the work-around. Will try to figure it out.
 
 ## TODO and Issues
 
-- When creating a voronoi within a sketch profile with curves will have issues if padding is applied.  The scaled profile will not be evenly spaced around the non-padded profile.  If the profile has straight lines, it works correctly.
+- Creating a voronoi within a sketch profile with curves will have issues if padding is applied.  The scaled profile will not be evenly spaced around the non-padded profile.  If the profile has straight lines, it works correctly.
 - Voronoi patterns with straight lines will have fixed contraints automatically added by Fusion on import. If the lines of the cells are all black, then that is what has happened. To be able to edit/move/etc the voronoi cells, you must Unlock the lines using these steps:
     1. Edit the sketch containing the voronoi
     2. Click on the Fix/UnFix constraint button from the toolbar (looks like a lock)
