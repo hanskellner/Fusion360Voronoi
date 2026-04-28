@@ -187,6 +187,30 @@ def getProfilePoints(profile):
     return sortedProfileCurves
 
 
+# Compute the bbox of the sampled profile points (matches what the JS editor sees).
+# Returns (minPoint, width, height) in cm, or None if no points.
+# We use this instead of profile.boundingBox because the API bbox can include extents
+# that the sampled-point polyline doesn't actually reach (e.g. for arc/spline profile
+# segments whose underlying geometry has different parameter extents than the trimmed
+# segment), which causes the imported SVG to be offset relative to the cells.
+def getProfilePointsBounds(profilePoints):
+    if not profilePoints:
+        return None
+    xmin = ymin = float('inf')
+    xmax = ymax = float('-inf')
+    hasPoints = False
+    for path in profilePoints:
+        for pt in path:
+            hasPoints = True
+            if pt.x < xmin: xmin = pt.x
+            if pt.y < ymin: ymin = pt.y
+            if pt.x > xmax: xmax = pt.x
+            if pt.y > ymax: ymax = pt.y
+    if not hasPoints:
+        return None
+    return (adsk.core.Point3D.create(xmin, ymin, 0), xmax - xmin, ymax - ymin)
+
+
 def getProfileBounds(profile):
 
     outerLoop = None
@@ -307,17 +331,23 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
 
                 # If a profile selected, then get dimensions and set in inputs
                 if profile != None:
-                    # Get profile width/height (in centimeters)
-                    widthProfile = bboxProfile.maxPoint.x - bboxProfile.minPoint.x
-                    heightProfile = bboxProfile.maxPoint.y - bboxProfile.minPoint.y
+                    _profilePoints = getProfilePoints(profile)
+                    _profileSketchName = profileSketchName
+
+                    # Use the bbox of the actual sampled points (what the JS editor uses)
+                    # rather than profile.boundingBox, so that placement on import aligns
+                    # with what the user sees in the editor preview.
+                    pointsBounds = getProfilePointsBounds(_profilePoints)
+                    if pointsBounds is not None:
+                        _profileOrigin, widthProfile, heightProfile = pointsBounds
+                    else:
+                        widthProfile = bboxProfile.maxPoint.x - bboxProfile.minPoint.x
+                        heightProfile = bboxProfile.maxPoint.y - bboxProfile.minPoint.y
+                        _profileOrigin = bboxProfile.minPoint
 
                     # Set the profile width and height input values
                     _widthProfileStringValueCommandInput.value = '{0:.2f} '.format(des.unitsManager.convert(widthProfile, 'cm', _units)) + _units
                     _heightProfileStringValueCommandInput.value = '{0:.2f} '.format(des.unitsManager.convert(heightProfile, 'cm', _units)) + _units
-
-                    _profilePoints = getProfilePoints(profile)
-                    _profileSketchName = profileSketchName
-                    _profileOrigin = bboxProfile.minPoint
                 else:
                     _widthProfileStringValueCommandInput.value = "0.0"
                     _heightProfileStringValueCommandInput.value = "0.0"
@@ -335,8 +365,14 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
                 # Copy profile size over to voronoi size (should only be possible if profile selected)
                 ( profile, bboxProfile, profileSketchName) = getSelectedProfile()
                 if profile != None:
-                    _widthValueCommandInput.value = bboxProfile.maxPoint.x - bboxProfile.minPoint.x
-                    _heightValueCommandInput.value = bboxProfile.maxPoint.y - bboxProfile.minPoint.y
+                    pointsBounds = getProfilePointsBounds(_profilePoints)
+                    if pointsBounds is not None:
+                        _, w, h = pointsBounds
+                        _widthValueCommandInput.value = w
+                        _heightValueCommandInput.value = h
+                    else:
+                        _widthValueCommandInput.value = bboxProfile.maxPoint.x - bboxProfile.minPoint.x
+                        _heightValueCommandInput.value = bboxProfile.maxPoint.y - bboxProfile.minPoint.y
                 else:
                     _widthValueCommandInput.value = 0
                     _heightValueCommandInput.value = 0
@@ -644,7 +680,7 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
             #print("Profile XY Orig = {0},{1}".format(xPos, yPos))
         else:
             yPos = _heightVoronoi
-        
+
         # import the temp svg file into the sketch.
         retValue = theSketch.importSVG(_svgFilePath, xPos, yPos, 1)    # (filePath, xPos, yPos, scale)
 
