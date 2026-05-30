@@ -58,6 +58,8 @@ _profilePoints = []
 _profileSketchName = ''
 _profileSketch = None   # direct reference to profile's parent sketch entity
 _profileOrigin = None
+_profileWidth = 0
+_profileHeight = 0
 
 _svgFilePath = ''
 
@@ -74,11 +76,13 @@ _applyProfileSizeBoolValueInput = adsk.core.BoolValueCommandInput.cast(None)
 
 # Reset some of the variables before dialog appears
 def resetState():
-    global _profilePoints, _profileSketchName, _profileSketch, _profileOrigin, _selectedSketchName, _selectedSketch, _svgFilePath
+    global _profilePoints, _profileSketchName, _profileSketch, _profileOrigin, _profileWidth, _profileHeight, _selectedSketchName, _selectedSketch, _svgFilePath
     _profilePoints = []
     _profileSketchName = ''
     _profileSketch = None
     _profileOrigin = None
+    _profileWidth = 0
+    _profileHeight = 0
     _selectedSketchName = ''
     _selectedSketch = None
     _svgFilePath = ''
@@ -321,7 +325,7 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
         super().__init__()
     def notify(self, args):
         try:
-            global _app, _units, _widthVoronoi, _heightVoronoi, _profilePoints, _profileOrigin, _profileSketchName, _profileSketch, _selectedSketchName, _constructionPlane
+            global _app, _units, _widthVoronoi, _heightVoronoi, _profilePoints, _profileOrigin, _profileWidth, _profileHeight, _profileSketchName, _profileSketch, _selectedSketchName, _constructionPlane
             global _widthValueCommandInput, _heightValueCommandInput, _widthProfileStringValueCommandInput, _heightProfileStringValueCommandInput
 
             des = adsk.fusion.Design.cast(_app.activeProduct)
@@ -353,6 +357,9 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
                         heightProfile = bboxProfile.maxPoint.y - bboxProfile.minPoint.y
                         _profileOrigin = bboxProfile.minPoint
 
+                    _profileWidth = widthProfile
+                    _profileHeight = heightProfile
+
                     # Set the profile width and height input values
                     _widthProfileStringValueCommandInput.value = '{0:.2f} '.format(des.unitsManager.convert(widthProfile, 'cm', _units)) + _units
                     _heightProfileStringValueCommandInput.value = '{0:.2f} '.format(des.unitsManager.convert(heightProfile, 'cm', _units)) + _units
@@ -361,6 +368,8 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
                     _heightProfileStringValueCommandInput.value = "0.0"
                     _profilePoints = []
                     _profileOrigin = None
+                    _profileWidth = 0
+                    _profileHeight = 0
 
                 _widthProfileStringValueCommandInput.isVisible = (profile != None)
                 _heightProfileStringValueCommandInput.isVisible = (profile != None)
@@ -648,7 +657,7 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
         eventArgs = adsk.core.CommandEventArgs.cast(args)
 
         global _app, _svgFilePath, _selectedSketchName, _selectedSketch, _constructionPlane
-        global _profileOrigin, _profileSketchName, _profileSketch, _heightVoronoi, _widthVoronoi
+        global _profileOrigin, _profileWidth, _profileHeight, _profileSketchName, _profileSketch, _heightVoronoi, _widthVoronoi
 
         if _svgFilePath == '':
             print("ERROR: Missing the SVG filepath")
@@ -684,7 +693,9 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
 
         if _profileSketchName != '' and _profileOrigin != None:
             xPos = _profileOrigin.x
-            yPos = _profileOrigin.y + _heightVoronoi
+            # When inserting into a selected profile, align to the profile's sampled
+            # bounds (the same bounds used by the editor preview), not the dialog size.
+            yPos = _profileOrigin.y + (_profileHeight if _profileHeight > 0 else _heightVoronoi)
             #print("Profile XY Orig = {0},{1}".format(xPos, yPos))
         else:
             yPos = _heightVoronoi
