@@ -589,6 +589,91 @@ $(function() {
         path.scale(newScale);
     }
 
+    // Inset a polygon path inward by a fixed distance uniformly on all sides.
+    // Unlike scaleCellToDistance (which scales from the centroid and produces
+    // proportionally unequal insets on non-square shapes), this offsets each edge
+    // perpendicularly by the exact distance and intersects adjacent offset edges to
+    // find the new vertex positions.  Used for the profile gap path.
+    function insetPathByDistance(path, distance) {
+        if (distance <= 0) return;
+        var segCount = path.segments.length;
+        if (segCount < 3) return;
+
+        var pts = [];
+        for (var i = 0; i < segCount; i++) {
+            pts.push(path.segments[i].point.clone());
+        }
+
+        // The profile path is built as quasi-closed: each segment's end point is the
+        // next segment's start, so the final point duplicates the first.  Detect this
+        // and work with only the n unique corner vertices so no zero-length edge skips
+        // a corner during the inset calculation.
+        var lastDupsFirst = segCount > 3 &&
+            Math.abs(pts[segCount-1].x - pts[0].x) < 1e-6 &&
+            Math.abs(pts[segCount-1].y - pts[0].y) < 1e-6;
+
+        var n = lastDupsFirst ? segCount - 1 : segCount;
+        if (n < 3) return;
+
+        // Determine winding via the shoelace signed-area formula.
+        // Positive result = CW in screen space (Y increases downward).
+        var area = 0;
+        for (var i = 0; i < n; i++) {
+            var j = (i + 1) % n;
+            area += pts[i].x * pts[j].y - pts[j].x * pts[i].y;
+        }
+        var cw = area > 0;
+
+        var newPts = [];
+        for (var i = 0; i < n; i++) {
+            var prev = pts[(i - 1 + n) % n];
+            var curr = pts[i];
+            var next = pts[(i + 1) % n];
+
+            // Unit vectors of incoming edge (prev→curr) and outgoing edge (curr→next)
+            var ax = curr.x - prev.x, ay = curr.y - prev.y;
+            var bx = next.x - curr.x, by = next.y - curr.y;
+            var la = Math.sqrt(ax*ax + ay*ay), lb = Math.sqrt(bx*bx + by*by);
+            if (la < 1e-10 || lb < 1e-10) { newPts.push(curr.clone()); continue; }
+            ax /= la; ay /= la;
+            bx /= lb; by /= lb;
+
+            // Inward unit normals:
+            //   CW winding  → left normal  = (-ey, ex)
+            //   CCW winding → right normal = ( ey,-ex)
+            var na_x = cw ? -ay : ay,  na_y = cw ?  ax : -ax;
+            var nb_x = cw ? -by : by,  nb_y = cw ?  bx : -bx;
+
+            // Two offset lines that meet at the inset corner:
+            //   Line A: (prev + na*d) → (curr + na*d)
+            //   Line B: (curr + nb*d) → (next + nb*d)
+            var p1x = prev.x + na_x*distance, p1y = prev.y + na_y*distance;
+            var p2x = curr.x + na_x*distance, p2y = curr.y + na_y*distance;
+            var p3x = curr.x + nb_x*distance, p3y = curr.y + nb_y*distance;
+            var p4x = next.x + nb_x*distance, p4y = next.y + nb_y*distance;
+
+            var dx1 = p2x-p1x, dy1 = p2y-p1y;
+            var dx2 = p4x-p3x, dy2 = p4y-p3y;
+            var cross = dx1*dy2 - dy1*dx2;
+
+            if (Math.abs(cross) < 1e-10) {
+                // Parallel edges (e.g. straight corner) — use the offset point directly
+                newPts.push(new paper.Point(p2x, p2y));
+            } else {
+                var t = ((p3x-p1x)*dy2 - (p3y-p1y)*dx2) / cross;
+                newPts.push(new paper.Point(p1x + t*dx1, p1y + t*dy1));
+            }
+        }
+
+        for (var i = 0; i < n; i++) {
+            path.segments[i].point = newPts[i];
+        }
+        // Keep the quasi-closed duplicate last point in sync with the (now inset) first point
+        if (lastDupsFirst) {
+            path.segments[segCount - 1].point = newPts[0].clone();
+        }
+    }
+
     function cellSitesCount() {
         return _cellSitesRelaxed.length;
     }
@@ -689,7 +774,7 @@ $(function() {
                 _profilePathGap = _profilePath.clone(); //{ insert: true, deep: true });
                 _profilePathGap.strokeColor = 'purple';
 
-                scaleCellToDistance(_profilePathGap, cms2pixels(propertyPagePadding()));
+                insetPathByDistance(_profilePathGap, cms2pixels(propertyPagePadding()));
             }
         }
         else {
