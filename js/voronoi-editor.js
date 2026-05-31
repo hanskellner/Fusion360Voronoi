@@ -38,6 +38,8 @@ $(function() {
     // Fusion 360 API.  THerefore, that's what is used here.
     var UNITS = {
         Inches: 'in',
+        Feet: 'ft',
+        Millimeters: 'mm',
         Centimeters: 'cm'
     }
 
@@ -87,6 +89,10 @@ $(function() {
     
     function inches2cms(val) { return (val * 2.54); }
     function cms2inches(val) { return (val / 2.54); }
+    function mm2cms(val) { return val / 10.0; }
+    function cms2mm(val) { return val * 10.0; }
+    function ft2cms(val) { return val * 30.48; }
+    function cms2ft(val) { return val / 30.48; }
 
     $('#sidebarCollapse').on('click', function () {
         $('#sidebar').toggleClass('active');
@@ -154,7 +160,13 @@ $(function() {
 
     function propertyCellGap(defaultGap = 0.1) {
         var gap = parseFloat($valueCellGap.val());
-        return (gap !== NaN) ? gap / 10.0 : defaultGap;
+        if (isNaN(gap)) return defaultGap;
+        switch (_units) {
+            case 'in': return inches2cms(gap);
+            case 'ft': return ft2cms(gap);
+            case 'mm': return mm2cms(gap);
+            default:   return gap; // cm
+        }
     }
 
     // For the cell shape scale range
@@ -260,12 +272,16 @@ $(function() {
     // Return the page padding (in CMs).
     function propertyPagePadding() {
         var val = Number($valuePagePadding.val());
-        if (val === NaN || val < 0) {
+        if (isNaN(val) || val < 0) {
             return _padding; // Incoming is invalid so use current value
         }
         else {
-            // REVIEW: Set the local var _padding too?
-            return (propertyUnits() === UNITS.Inches) ? inches2cms(val) : val;  // Need to convert to cms internally
+            switch (_units) {
+                case 'in': return inches2cms(val);
+                case 'ft': return ft2cms(val);
+                case 'mm': return mm2cms(val);
+                default:   return val; // cm
+            }
         }
     }
 
@@ -274,8 +290,14 @@ $(function() {
         _padding = val; // TODO: Validate
 
         // Form display value in selected units
-        let formVal = (propertyUnits() === UNITS.Inches) ? cms2inches(val) : val;
-        $valuePagePadding.val(Number(formVal.toFixed(2)));
+        let formVal;
+        switch (_units) {
+            case 'in': formVal = cms2inches(val); break;
+            case 'ft': formVal = cms2ft(val); break;
+            case 'mm': formVal = cms2mm(val); break;
+            default:   formVal = val; break; // cm
+        }
+        $valuePagePadding.val(Number(formVal.toFixed(3)));
     }
 
     // Number of iterations for Lloyd's Relaxation
@@ -324,8 +346,32 @@ $(function() {
     // Units indicator
     const $valueUnitsIndicator = $('.units');
     function updatePropertyUnitsIndicator() {
-        let formVal = (propertyUnits() === UNITS.Inches) ? '(inches)' : '(cm)';
+        let formVal;
+        switch (_units) {
+            case 'in': formVal = '(inches)'; break;
+            case 'ft': formVal = '(feet)'; break;
+            case 'mm': formVal = '(mm)'; break;
+            default:   formVal = '(cm)'; break;
+        }
         $valueUnitsIndicator.text(formVal);
+    }
+
+    // Update cell gap slider range and default value to match current units
+    function updateCellGapForUnits() {
+        var config;
+        switch (_units) {
+            case 'in': config = {max: '0.8',  step: '0.005', defaultVal: '0.04'}; break;
+            case 'ft': config = {max: '0.07', step: '0.001', defaultVal: '0.003'}; break;
+            case 'mm': config = {max: '20',   step: '0.1',   defaultVal: '1'};    break;
+            default:   config = {max: '2',    step: '0.01',  defaultVal: '0.1'};  break; // cm
+        }
+        $valueCellGap.attr({max: config.max, step: config.step});
+        var curVal = parseFloat($valueCellGap.val());
+        var maxVal = parseFloat(config.max);
+        if (isNaN(curVal) || curVal > maxVal || curVal <= 0) {
+            $valueCellGap.val(config.defaultVal);
+            $valueSpanCellGap.html(config.defaultVal);
+        }
     }
 
     // Units
@@ -336,12 +382,15 @@ $(function() {
     }
 
     function setPropertyUnits(val) {
-        if (val == 'in' || val != 'ft')
-            _units = UNITS.Inches;
-        else
+        if (val === 'in' || val === 'ft' || val === 'mm' || val === 'cm') {
+            _units = val;
+        } else {
             _units = UNITS.Centimeters;
+        }
 
         updatePropertyUnitsIndicator();
+        updateCellGapForUnits();
+        setPropertyPagePadding(_padding);
     }
 
     updatePropertyUnitsIndicator();

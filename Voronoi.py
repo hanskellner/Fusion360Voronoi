@@ -506,13 +506,15 @@ class VoronoiCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             _constructionPlaneDropDownInput.listItems.add(_CONSTRUCTION_PLANE_XZ, (_constructionPlane == _CONSTRUCTION_PLANE_XZ))
             _constructionPlaneDropDownInput.listItems.add(_CONSTRUCTION_PLANE_YZ, (_constructionPlane == _CONSTRUCTION_PLANE_YZ))
 
-            # Create a default values using a string
-            value_width = adsk.core.ValueInput.createByString('6.0 in')
-            value_height = adsk.core.ValueInput.createByString('4.0 in')
-
-            if _units != 'in' and _units != 'ft':
-                value_width = adsk.core.ValueInput.createByString('15.0 cm')
-                value_height = adsk.core.ValueInput.createByString('10.0 cm')
+            # Create default values in document units
+            _default_sizes = {
+                'in': ('6.0 in',   '4.0 in'),
+                'ft': ('0.5 ft',   '0.333 ft'),
+                'mm': ('150.0 mm', '100.0 mm'),
+            }
+            _w_str, _h_str = _default_sizes.get(_units, ('15.0 cm', '10.0 cm'))
+            value_width  = adsk.core.ValueInput.createByString(_w_str)
+            value_height = adsk.core.ValueInput.createByString(_h_str)
 
             _widthValueCommandInput = cmdInputs_.addValueInput(_VALUE_INPUT_ID_WIDTH, 'Width', _units, value_width) # adsk.core.ValueInput.createByReal(25.0))
             _heightValueCommandInput = cmdInputs_.addValueInput(_VALUE_INPUT_ID_HEIGHT, 'Height', _units, value_height) # adsk.core.ValueInput.createByReal(20.0))
