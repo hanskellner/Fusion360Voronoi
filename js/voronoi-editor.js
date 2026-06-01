@@ -38,6 +38,8 @@ $(function() {
     // Fusion 360 API.  THerefore, that's what is used here.
     var UNITS = {
         Inches: 'in',
+        Feet: 'ft',
+        Millimeters: 'mm',
         Centimeters: 'cm'
     }
 
@@ -87,6 +89,10 @@ $(function() {
     
     function inches2cms(val) { return (val * 2.54); }
     function cms2inches(val) { return (val / 2.54); }
+    function mm2cms(val) { return val / 10.0; }
+    function cms2mm(val) { return val * 10.0; }
+    function ft2cms(val) { return val * 30.48; }
+    function cms2ft(val) { return val / 30.48; }
 
     $('#sidebarCollapse').on('click', function () {
         $('#sidebar').toggleClass('active');
@@ -154,7 +160,13 @@ $(function() {
 
     function propertyCellGap(defaultGap = 0.1) {
         var gap = parseFloat($valueCellGap.val());
-        return (gap !== NaN) ? gap / 10.0 : defaultGap;
+        if (isNaN(gap)) return defaultGap;
+        switch (_units) {
+            case 'in': return inches2cms(gap);
+            case 'ft': return ft2cms(gap);
+            case 'mm': return mm2cms(gap);
+            default:   return gap; // cm
+        }
     }
 
     // For the cell shape scale range
@@ -260,12 +272,16 @@ $(function() {
     // Return the page padding (in CMs).
     function propertyPagePadding() {
         var val = Number($valuePagePadding.val());
-        if (val === NaN || val < 0) {
+        if (isNaN(val) || val < 0) {
             return _padding; // Incoming is invalid so use current value
         }
         else {
-            // REVIEW: Set the local var _padding too?
-            return (propertyUnits() === UNITS.Inches) ? inches2cms(val) : val;  // Need to convert to cms internally
+            switch (_units) {
+                case 'in': return inches2cms(val);
+                case 'ft': return ft2cms(val);
+                case 'mm': return mm2cms(val);
+                default:   return val; // cm
+            }
         }
     }
 
@@ -274,8 +290,14 @@ $(function() {
         _padding = val; // TODO: Validate
 
         // Form display value in selected units
-        let formVal = (propertyUnits() === UNITS.Inches) ? cms2inches(val) : val;
-        $valuePagePadding.val(Number(formVal.toFixed(2)));
+        let formVal;
+        switch (_units) {
+            case 'in': formVal = cms2inches(val); break;
+            case 'ft': formVal = cms2ft(val); break;
+            case 'mm': formVal = cms2mm(val); break;
+            default:   formVal = val; break; // cm
+        }
+        $valuePagePadding.val(Number(formVal.toFixed(3)));
     }
 
     // Number of iterations for Lloyd's Relaxation
@@ -324,8 +346,32 @@ $(function() {
     // Units indicator
     const $valueUnitsIndicator = $('.units');
     function updatePropertyUnitsIndicator() {
-        let formVal = (propertyUnits() === UNITS.Inches) ? '(inches)' : '(cm)';
+        let formVal;
+        switch (_units) {
+            case 'in': formVal = '(inches)'; break;
+            case 'ft': formVal = '(feet)'; break;
+            case 'mm': formVal = '(mm)'; break;
+            default:   formVal = '(cm)'; break;
+        }
         $valueUnitsIndicator.text(formVal);
+    }
+
+    // Update cell gap slider range and default value to match current units
+    function updateCellGapForUnits() {
+        var config;
+        switch (_units) {
+            case 'in': config = {max: '0.8',  step: '0.005', defaultVal: '0.04'}; break;
+            case 'ft': config = {max: '0.07', step: '0.001', defaultVal: '0.003'}; break;
+            case 'mm': config = {max: '20',   step: '0.1',   defaultVal: '1'};    break;
+            default:   config = {max: '2',    step: '0.01',  defaultVal: '0.1'};  break; // cm
+        }
+        $valueCellGap.attr({max: config.max, step: config.step});
+        var curVal = parseFloat($valueCellGap.val());
+        var maxVal = parseFloat(config.max);
+        if (isNaN(curVal) || curVal > maxVal || curVal <= 0) {
+            $valueCellGap.val(config.defaultVal);
+            $valueSpanCellGap.html(config.defaultVal);
+        }
     }
 
     // Units
@@ -336,12 +382,15 @@ $(function() {
     }
 
     function setPropertyUnits(val) {
-        if (val == 'in' || val != 'ft')
-            _units = UNITS.Inches;
-        else
+        if (val === 'in' || val === 'ft' || val === 'mm' || val === 'cm') {
+            _units = val;
+        } else {
             _units = UNITS.Centimeters;
+        }
 
         updatePropertyUnitsIndicator();
+        updateCellGapForUnits();
+        setPropertyPagePadding(_padding);
     }
 
     updatePropertyUnitsIndicator();
@@ -589,6 +638,91 @@ $(function() {
         path.scale(newScale);
     }
 
+    // Inset a polygon path inward by a fixed distance uniformly on all sides.
+    // Unlike scaleCellToDistance (which scales from the centroid and produces
+    // proportionally unequal insets on non-square shapes), this offsets each edge
+    // perpendicularly by the exact distance and intersects adjacent offset edges to
+    // find the new vertex positions.  Used for the profile gap path.
+    function insetPathByDistance(path, distance) {
+        if (distance <= 0) return;
+        var segCount = path.segments.length;
+        if (segCount < 3) return;
+
+        var pts = [];
+        for (var i = 0; i < segCount; i++) {
+            pts.push(path.segments[i].point.clone());
+        }
+
+        // The profile path is built as quasi-closed: each segment's end point is the
+        // next segment's start, so the final point duplicates the first.  Detect this
+        // and work with only the n unique corner vertices so no zero-length edge skips
+        // a corner during the inset calculation.
+        var lastDupsFirst = segCount > 3 &&
+            Math.abs(pts[segCount-1].x - pts[0].x) < 1e-6 &&
+            Math.abs(pts[segCount-1].y - pts[0].y) < 1e-6;
+
+        var n = lastDupsFirst ? segCount - 1 : segCount;
+        if (n < 3) return;
+
+        // Determine winding via the shoelace signed-area formula.
+        // Positive result = CW in screen space (Y increases downward).
+        var area = 0;
+        for (var i = 0; i < n; i++) {
+            var j = (i + 1) % n;
+            area += pts[i].x * pts[j].y - pts[j].x * pts[i].y;
+        }
+        var cw = area > 0;
+
+        var newPts = [];
+        for (var i = 0; i < n; i++) {
+            var prev = pts[(i - 1 + n) % n];
+            var curr = pts[i];
+            var next = pts[(i + 1) % n];
+
+            // Unit vectors of incoming edge (prev→curr) and outgoing edge (curr→next)
+            var ax = curr.x - prev.x, ay = curr.y - prev.y;
+            var bx = next.x - curr.x, by = next.y - curr.y;
+            var la = Math.sqrt(ax*ax + ay*ay), lb = Math.sqrt(bx*bx + by*by);
+            if (la < 1e-10 || lb < 1e-10) { newPts.push(curr.clone()); continue; }
+            ax /= la; ay /= la;
+            bx /= lb; by /= lb;
+
+            // Inward unit normals:
+            //   CW winding  → left normal  = (-ey, ex)
+            //   CCW winding → right normal = ( ey,-ex)
+            var na_x = cw ? -ay : ay,  na_y = cw ?  ax : -ax;
+            var nb_x = cw ? -by : by,  nb_y = cw ?  bx : -bx;
+
+            // Two offset lines that meet at the inset corner:
+            //   Line A: (prev + na*d) → (curr + na*d)
+            //   Line B: (curr + nb*d) → (next + nb*d)
+            var p1x = prev.x + na_x*distance, p1y = prev.y + na_y*distance;
+            var p2x = curr.x + na_x*distance, p2y = curr.y + na_y*distance;
+            var p3x = curr.x + nb_x*distance, p3y = curr.y + nb_y*distance;
+            var p4x = next.x + nb_x*distance, p4y = next.y + nb_y*distance;
+
+            var dx1 = p2x-p1x, dy1 = p2y-p1y;
+            var dx2 = p4x-p3x, dy2 = p4y-p3y;
+            var cross = dx1*dy2 - dy1*dx2;
+
+            if (Math.abs(cross) < 1e-10) {
+                // Parallel edges (e.g. straight corner) — use the offset point directly
+                newPts.push(new paper.Point(p2x, p2y));
+            } else {
+                var t = ((p3x-p1x)*dy2 - (p3y-p1y)*dx2) / cross;
+                newPts.push(new paper.Point(p1x + t*dx1, p1y + t*dy1));
+            }
+        }
+
+        for (var i = 0; i < n; i++) {
+            path.segments[i].point = newPts[i];
+        }
+        // Keep the quasi-closed duplicate last point in sync with the (now inset) first point
+        if (lastDupsFirst) {
+            path.segments[segCount - 1].point = newPts[0].clone();
+        }
+    }
+
     function cellSitesCount() {
         return _cellSitesRelaxed.length;
     }
@@ -689,7 +823,7 @@ $(function() {
                 _profilePathGap = _profilePath.clone(); //{ insert: true, deep: true });
                 _profilePathGap.strokeColor = 'purple';
 
-                scaleCellToDistance(_profilePathGap, cms2pixels(propertyPagePadding()));
+                insetPathByDistance(_profilePathGap, cms2pixels(propertyPagePadding()));
             }
         }
         else {

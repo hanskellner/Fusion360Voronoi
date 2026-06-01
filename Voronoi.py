@@ -4,8 +4,9 @@
 #MIT License: See https://github.com/hanskellner/Fusion360Voronoi/LICENSE.md
 
 import adsk.core, adsk.fusion, adsk.cam, traceback
-import json, tempfile, platform
+import json, tempfile
 from urllib.parse import unquote
+import os
 
 #############################################################################
 # global constants
@@ -114,7 +115,7 @@ def getProfilePoints(profile):
             outerLoop = profile.profileLoops.item(iLoop)
             break
 
-    if outerLoop == None:
+    if outerLoop is None:
         return None
 
     profileCurves = []  # Will contain an array for each curve
@@ -135,8 +136,8 @@ def getProfilePoints(profile):
             (retVal, startParam, endParam) = evaluator.getParameterExtents()
             (retVal, length) = evaluator.getLengthAtParameter(startParam, endParam)
 
-            num_steps = length / 0.2   # step every 2mm
-            step = (endParam - startParam)/num_steps
+            num_steps = max(1, length / 0.2)   # step every 2mm
+            step = (endParam - startParam) / num_steps
 
             param = startParam
             while param < endParam:
@@ -157,7 +158,7 @@ def getProfilePoints(profile):
 
     # Extract each profile curve as it gets added to sorted list
     while len(profileCurves) > 0:
-        if lastCurve == None:
+        if lastCurve is None:
             lastCurve = profileCurves[0]
             sortedProfileCurves.append(lastCurve)
             profileCurves.pop(0)
@@ -189,7 +190,7 @@ def getProfilePoints(profile):
                     break   # Drop out of for loop
 
             # If not match found then we need to exit search but first copy over path as-is
-            if foundMatch == False:
+            if not foundMatch:
                 print("Unable to sort profile paths")
                 for iCurve in range(len(profileCurves)):
                     sortedProfileCurves.append(profileCurves[iCurve])
@@ -232,7 +233,7 @@ def getProfileBounds(profile):
             outerLoop = profile.profileLoops.item(iLoop)
             break
 
-    if outerLoop == None:
+    if outerLoop is None:
         return None
     else:
         return profile.boundingBox # Return the BBOX for the profile since it's got an outer loop
@@ -277,7 +278,7 @@ def setFixedSketchPoints(sketchCurves, flag):
         for iCurve in range(sketchCurves.count):
             curve = sketchCurves.item(iCurve)
             curve.isFixed = flag
-    except:
+    except Exception:
         if _ui:
             _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
@@ -289,32 +290,12 @@ def sendInitInfoToHTML(palette):
 
     global _units, _widthVoronoi, _heightVoronoi, _profilePoints
 
-    #des = adsk.fusion.Design.cast(_app.activeProduct)
-
-    jsonDataStr = '{{"units": "{0}", "width": "{1}", "height": "{2}", "profile": ['.format(_units, _widthVoronoi, _heightVoronoi)
-
-    # If profile selected and there are profile points then add to json
-    for iPath in range(len(_profilePoints)):
-        if iPath > 0:
-            jsonDataStr += ', '
-        jsonDataStr += '['
-
-        pathPoints = _profilePoints[iPath]
-        for iPt in range(len(pathPoints)):
-            if iPt > 0:
-                jsonDataStr += ', '
-
-            x = pathPoints[iPt].x # des.unitsManager.convert(pathPoints[iPt].x, 'cm', _units)
-            y = pathPoints[iPt].y # des.unitsManager.convert(pathPoints[iPt].y, 'cm', _units)
-            
-            jsonDataStr += '{{"x":"{0:.4}","y":"{1:.4}"}}'.format(x,y)
-
-        jsonDataStr += ']'
-
-    jsonDataStr += ']}'
-    print(jsonDataStr)
-
-    palette.sendInfoToHTML('init', jsonDataStr)
+    profile_data = [
+        [{"x": f"{pt.x:.4f}", "y": f"{pt.y:.4f}"} for pt in path]
+        for path in _profilePoints
+    ]
+    payload = {"units": _units, "width": str(_widthVoronoi), "height": str(_heightVoronoi), "profile": profile_data}
+    palette.sendInfoToHTML('init', json.dumps(payload))
 
 
 #############################################################################
@@ -338,10 +319,10 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
                 _selectedSketchName = getSelectedSketchName()
                 ( profile, bboxProfile, profileSketchName) = getSelectedProfile()
 
-                _constructionPlaneDropDownInput.isEnabled = (profile == None and _selectedSketchName == '')
+                _constructionPlaneDropDownInput.isEnabled = (profile is None and _selectedSketchName == '')
 
                 # If a profile selected, then get dimensions and set in inputs
-                if profile != None:
+                if profile is not None:
                     _profilePoints = getProfilePoints(profile)
                     _profileSketchName = profileSketchName
                     _profileSketch = profile.parentSketch
@@ -371,9 +352,9 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
                     _profileWidth = 0
                     _profileHeight = 0
 
-                _widthProfileStringValueCommandInput.isVisible = (profile != None)
-                _heightProfileStringValueCommandInput.isVisible = (profile != None)
-                _applyProfileSizeBoolValueInput.isVisible = (profile != None)
+                _widthProfileStringValueCommandInput.isVisible = (profile is not None)
+                _heightProfileStringValueCommandInput.isVisible = (profile is not None)
+                _applyProfileSizeBoolValueInput.isVisible = (profile is not None)
 
             elif changedInput.id == _DROPDOWN_INPUT_ID_CONSTRUCTION_PLANE:
                 _constructionPlane = _constructionPlaneDropDownInput.selectedItem.name
@@ -381,7 +362,7 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
             elif changedInput.id == _BOOL_INPUT_ID_APPLY_PROFILE_SIZE:
                 # Copy profile size over to voronoi size (should only be possible if profile selected)
                 ( profile, bboxProfile, profileSketchName) = getSelectedProfile()
-                if profile != None:
+                if profile is not None:
                     pointsBounds = getProfilePointsBounds(_profilePoints)
                     if pointsBounds is not None:
                         _, w, h = pointsBounds
@@ -400,7 +381,7 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
             if _heightValueCommandInput.isValidExpression:
                 _heightVoronoi = _heightValueCommandInput.value
 
-        except:
+        except Exception:
             if _ui:
                 _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
         
@@ -418,7 +399,7 @@ class VoronoiCommandActivatedHandler(adsk.core.CommandEventHandler):
             _heightProfileStringValueCommandInput.isVisible = False
             _applyProfileSizeBoolValueInput.isVisible = False
 
-        except:
+        except Exception:
             if _ui:
                 _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
@@ -461,7 +442,7 @@ class VoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
                 # received by the browser that first time.  Handled in a html callback.
                 sendInitInfoToHTML(palette)
 
-        except:
+        except Exception:
             if _ui:
                 _ui.messageBox('Command executed failed: {}'.format(traceback.format_exc()))
 
@@ -483,6 +464,7 @@ class VoronoiCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             _units = des.unitsManager.defaultLengthUnits
 
             # No profile
+            global _profileSketchName
             _profileSketchName = ''
 
             # Setup the command
@@ -506,13 +488,15 @@ class VoronoiCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             _constructionPlaneDropDownInput.listItems.add(_CONSTRUCTION_PLANE_XZ, (_constructionPlane == _CONSTRUCTION_PLANE_XZ))
             _constructionPlaneDropDownInput.listItems.add(_CONSTRUCTION_PLANE_YZ, (_constructionPlane == _CONSTRUCTION_PLANE_YZ))
 
-            # Create a default values using a string
-            value_width = adsk.core.ValueInput.createByString('6.0 in')
-            value_height = adsk.core.ValueInput.createByString('4.0 in')
-
-            if _units != 'in' and _units != 'ft':
-                value_width = adsk.core.ValueInput.createByString('15.0 cm')
-                value_height = adsk.core.ValueInput.createByString('10.0 cm')
+            # Create default values in document units
+            _default_sizes = {
+                'in': ('6.0 in',   '4.0 in'),
+                'ft': ('0.5 ft',   '0.333 ft'),
+                'mm': ('150.0 mm', '100.0 mm'),
+            }
+            _w_str, _h_str = _default_sizes.get(_units, ('15.0 cm', '10.0 cm'))
+            value_width  = adsk.core.ValueInput.createByString(_w_str)
+            value_height = adsk.core.ValueInput.createByString(_h_str)
 
             _widthValueCommandInput = cmdInputs_.addValueInput(_VALUE_INPUT_ID_WIDTH, 'Width', _units, value_width) # adsk.core.ValueInput.createByReal(25.0))
             _heightValueCommandInput = cmdInputs_.addValueInput(_VALUE_INPUT_ID_HEIGHT, 'Height', _units, value_height) # adsk.core.ValueInput.createByReal(20.0))
@@ -547,7 +531,7 @@ class VoronoiCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             onActivate = VoronoiCommandActivatedHandler()
             cmd.activate.add(onActivate)
             _handlers.append(onActivate)
-        except:
+        except Exception:
             _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 
@@ -559,7 +543,7 @@ class PaletteCloseEventHandler(adsk.core.UserInterfaceGeneralEventHandler):
         try:
             #_ui.messageBox('Close button was clicked.')
             pass
-        except:
+        except Exception:
             if _ui:
                 _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
@@ -616,7 +600,7 @@ class MyHTMLEventHandler(adsk.core.HTMLEventHandler):
 
                     # Save the SVG to a temp file            
                     fp = tempfile.NamedTemporaryFile(mode='w', suffix='.svg', delete=False)
-                    fp.writelines(svgStr)
+                    fp.write(svgStr)
                     fp.close()
                     _svgFilePath = fp.name
                     print ("Generated temporary SVG file: " + _svgFilePath)
@@ -624,13 +608,14 @@ class MyHTMLEventHandler(adsk.core.HTMLEventHandler):
                     # Get the command definition for the create voronoi core command which
                     # will do the work.
                     createVoronoiCoreCmdDef = _ui.commandDefinitions.itemById(_CREATE_VORONOI_CORE_CMD_ID)
-                    if createVoronoiCoreCmdDef != None:
+                    if createVoronoiCoreCmdDef is not None:
                         namedValues = adsk.core.NamedValues.create()
                         namedValues.add('svgFilePath', adsk.core.ValueInput.createByString(_svgFilePath))
                         createVoronoiCoreCmdDef.execute(namedValues)
                     else:
-                        pass    # error!
-        except:
+                        if _ui:
+                            _ui.messageBox('Failed to find the CreateVoronoi command definition.')
+        except Exception:
             if _ui:
                 _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
@@ -674,7 +659,7 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
         elif _profileSketch is not None:
             theSketch = _profileSketch
         
-        if theSketch == None:
+        if theSketch is None:
             # Which plane if no sketch?
             # xYConstructionPlane, xZConstructionPlane, yZConstructionPlane
             plane = rootComp.xYConstructionPlane
@@ -691,7 +676,7 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
         xPos = 0
         yPos = 0
 
-        if _profileSketchName != '' and _profileOrigin != None:
+        if _profileSketchName != '' and _profileOrigin is not None:
             xPos = _profileOrigin.x
             # When inserting into a selected profile, align to the profile's sampled
             # bounds (the same bounds used by the editor preview), not the dialog size.
@@ -703,8 +688,13 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
         # import the temp svg file into the sketch.
         retValue = theSketch.importSVG(_svgFilePath, xPos, yPos, 1)    # (filePath, xPos, yPos, scale)
 
+        try:
+            os.unlink(_svgFilePath)
+        except OSError:
+            pass
+        
         # Check if the import was successful
-        if retValue == False:
+        if not retValue:
             if _ui:
                 _ui.messageBox('Failed to import the Voronoi.  Unable to continue.')
         else:
@@ -755,7 +745,7 @@ def run(context):
         
         if context['IsApplicationStartup'] is False:
             _ui.messageBox('The "Voronoi Sketch Generator" command has been added\nto the SOLID->CREATE panel dropdown of the DESIGN workspace.\n\nTo run the command, select the SOLID->CREATE dropdown\nthen select "Voronoi Sketch Generator".')
-    except:
+    except Exception:
         #pass
         if _ui:
             _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
@@ -782,6 +772,7 @@ def stop(context):
         cmdDef = _ui.commandDefinitions.itemById(_CREATE_VORONOI_CORE_CMD_ID)
         if cmdDef:
             cmdDef.deleteMe()
-    except:
+        _handlers.clear()
+    except Exception:
         if _ui:
             _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
