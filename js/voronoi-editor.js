@@ -94,6 +94,20 @@ $(function() {
     function ft2cms(val) { return val * 30.48; }
     function cms2ft(val) { return val / 30.48; }
 
+    // Minimum cell gap (internal cm). Must stay > 0 for Fusion SVG import.
+    const MIN_CELL_GAP_CM = 0.001;
+
+    // Note, the formatting using toFixed may cause the value to appear to be 0.
+    // That's fine since it's approximately 0.  It will also fit in the UI.
+    function formatCellGapMin(units) {
+        switch (units) {
+            case 'in': return cms2inches(MIN_CELL_GAP_CM).toFixed(3);
+            case 'ft': return cms2ft(MIN_CELL_GAP_CM).toFixed(3);
+            case 'mm': return cms2mm(MIN_CELL_GAP_CM).toFixed(2);
+            default:   return MIN_CELL_GAP_CM.toFixed(3);
+        }
+    }
+
     $('#sidebarCollapse').on('click', function () {
         $('#sidebar').toggleClass('active');
     });
@@ -152,7 +166,6 @@ $(function() {
     // For the cell gap
     const $valueSpanCellGap = $('#cellGapValueSpan');
     const $valueCellGap = $('#cellGapRange');
-    $valueSpanCellGap.html($valueCellGap.val());
     $valueCellGap.on('input change', () => {
         $valueSpanCellGap.html($valueCellGap.val());
         updateView();
@@ -161,12 +174,14 @@ $(function() {
     function propertyCellGap(defaultGap = 0.1) {
         var gap = parseFloat($valueCellGap.val());
         if (isNaN(gap)) return defaultGap;
+        var gapCm;
         switch (_units) {
-            case 'in': return inches2cms(gap);
-            case 'ft': return ft2cms(gap);
-            case 'mm': return mm2cms(gap);
-            default:   return gap; // cm
+            case 'in': gapCm = inches2cms(gap); break;
+            case 'ft': gapCm = ft2cms(gap); break;
+            case 'mm': gapCm = mm2cms(gap); break;
+            default:   gapCm = gap; break;
         }
+        return Math.max(gapCm, MIN_CELL_GAP_CM);
     }
 
     // For the cell shape scale range
@@ -365,13 +380,9 @@ $(function() {
             case 'mm': config = {max: '20',   step: '0.1',   defaultVal: '1'};    break;
             default:   config = {max: '2',    step: '0.01',  defaultVal: '0.1'};  break; // cm
         }
-        $valueCellGap.attr({max: config.max, step: config.step});
-        var curVal = parseFloat($valueCellGap.val());
-        var maxVal = parseFloat(config.max);
-        if (isNaN(curVal) || curVal > maxVal || curVal <= 0) {
-            $valueCellGap.val(config.defaultVal);
-            $valueSpanCellGap.html(config.defaultVal);
-        }
+        $valueCellGap.attr({min: formatCellGapMin(_units), max: config.max, step: config.step});
+        $valueCellGap.val(config.defaultVal);
+        $valueSpanCellGap.html(config.defaultVal);
     }
 
     // Units
@@ -394,6 +405,7 @@ $(function() {
     }
 
     updatePropertyUnitsIndicator();
+    updateCellGapForUnits();
 
     // Profile
     function propertyProfile() {
