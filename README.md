@@ -8,7 +8,7 @@ This is an [Autodesk Fusion](http://fusion360.autodesk.com/) add-in for generati
 
 ![Fusion Voronoi Add-In](./resources/Voronoi-tooltip.png)
 
-It's possible to select an existing sketch, a sketch profile, or one of the (XY, XZ, YZ) construction planes as the target of the generated diagram.  When a sketch profile is selected, it will be used to define the bounds and to clip the generated diagram.
+It's possible to select an existing sketch, a sketch profile, a planar face of a body, or one of the (XY, XZ, YZ) construction planes as the target of the generated diagram.  When a sketch profile is selected, it will be used to define the bounds and to clip the generated diagram.  When a planar face is selected, a new sketch is created on the face and the face's outline becomes the profile used to bound and clip the diagram.
 
 Several styles of Voronoi diagrams may be created.  Each cell in a diagram has an outer edge.  The "edge style" may be specified as "Curves" or "Straight".  Selecting one of these styles will create a familiar style of Voronoi diagram.
 
@@ -52,13 +52,14 @@ Note, installing the add-in into the Fusion add-ins folder allows it to be found
 
     ![Voronoi Dialog](./images/VoronoiDialog.png)
 
-  - Sketch or Profile:
+  - Sketch, Profile, or Face:
     You may choose one of the following:
     * Sketch: Select an existing sketch to add the voronoi diagram.
     * Sketch Profile: Select a sketch profile to define the clipping bounds and where to add the voronoi diagram.
-    * Nothing: If no sketch or profile is selected then a new sketch will be created on the construction plane selected (see below).
+    * Planar Face: Select a planar face of a body.  A new sketch is created on the face and the face outline is projected into it to define the clipping bounds, then the voronoi diagram is added to that sketch.
+    * Nothing: If no sketch, profile, or face is selected then a new sketch will be created on the construction plane selected (see below).
   - Construction Plane:
-    * Enabled when no sketch or profile is selected.  Select which construction plane for the new sketch created for the voronoi diagram.
+    * Enabled when no sketch, profile, or face is selected.  Select which construction plane for the new sketch created for the voronoi diagram.
   - Width, Height: The width and height of the voronoi diagram.
 
 5. Leave the settings with their defaults and then click the 'Voronoi Editor' button.
@@ -108,16 +109,15 @@ When a profile is selected, the add-in dialog will display the width and height 
 
 ![Voronoi Dialog with Profile](./images/VoronoiDialog_Profile.png)
 
-It's also possible to select a profile on the planar face of a body.  Here's an example:
+It's also possible to select a planar face of a body directly.  The add-in will create a new sketch on the face for you and project the face's outline to use as the profile.  Here's an example:
 
 1. Create a new cylinder on the XY construction plane.  Make it 4in diameter and 1in tall.
-2. Create a new sketch on the top surface of the cylinder then click Finish Sketch.
-3. Run the 'Voronoi Sketch Generator' command.  The dialog should appear.
-4. Move the cursor over the top of the cylinder.  The top face should highlight.  Click to select it.
-5. The dialog should now display '1 Selected' in the Sketch of Profile field.  Also, fields should now be visible showing the width and height of the profile.
+2. Run the 'Voronoi Sketch Generator' command.  The dialog should appear.
+3. Move the cursor over the top of the cylinder.  The top face should highlight.  Click to select it.
+4. The dialog should now display '1 Selected' in the Sketch, Profile, or Face field.  Also, fields should now be visible showing the width and height of the profile.
     - Optionally, you can click the 'Use Profile Size' button to copy the profile dimension over to the voronoi dimensions.
     - Click 'Use Profile Size'
-6. Click 'Voronoi Editor'
+5. Click 'Voronoi Editor'
 
 At this point the palette will be appear and the circular profile contaning a voronoi diagram.
 
