@@ -193,20 +193,12 @@ Sorry for the work-around. Will try to figure it out.
 
 ## TODO and Issues
 
-- Creating a voronoi within a sketch profile with curves will have issues if padding is applied.  The scaled profile will not be evenly spaced around the non-padded profile.  If the profile has straight lines, it works correctly.
 - Voronoi patterns with straight lines will have fixed contraints automatically added by Fusion on import. If the lines of the cells are all black, then that is what has happened. To be able to edit/move/etc the voronoi cells, you must Unlock the lines using these steps:
     1. Edit the sketch containing the voronoi
     2. Click on the Fix/UnFix constraint button from the toolbar (looks like a lock)
     3. The the Unfix tool active, drag a selection box around all of the voronoi elements
         - On release from selection the lines should all turn blue.  If any are still black, try the steps above again.
-- The Padding amount works well with rectangular profiles but not with angled ones.
 - Inserting a voronoi diagram with many cells may cause Fusion to hang for a long time.  There may be no workaround on the add-in side.
-- When using a profile, the voronoi diagram *may* not be inserted at the offset of the profile.  The workaround is to:
-    1. Edit the sketch containing the voronoi
-    2. Change the 'Select->Selection Filters' to select only Sketch Points.
-    3. Window or Freeform select all of the voronoi cells.
-    4. Select Move/Copy and move the points to the correct offset.  Note, moving the points will also move the cell curves.
-- Issue with Voronoi not be added to selected sketch.
 
 ## Examples
 
