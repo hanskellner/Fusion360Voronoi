@@ -54,6 +54,12 @@ _heightVoronoi = 0
 _selectedSketchName = ''
 _selectedSketch = None  # direct reference to selected sketch entity
 
+# When a planar face is selected we defer creating the real sketch until the
+# diagram is published (geometry created during the dialog's inputChanged event
+# isn't committed to the document).  Keep the selected face so we can create the
+# sketch - on that face, with the face outline as its profile - at publish time.
+_selectedFace = None
+
 # Set to the points that roughly define the selected profile
 _profilePoints = []
 _profileSketchName = ''
@@ -78,6 +84,7 @@ _applyProfileSizeBoolValueInput = adsk.core.BoolValueCommandInput.cast(None)
 # Reset some of the variables before dialog appears
 def resetState():
     global _profilePoints, _profileSketchName, _profileSketch, _profileOrigin, _profileWidth, _profileHeight, _selectedSketchName, _selectedSketch, _svgFilePath
+    global _selectedFace
     _profilePoints = []
     _profileSketchName = ''
     _profileSketch = None
@@ -87,6 +94,8 @@ def resetState():
     _selectedSketchName = ''
     _selectedSketch = None
     _svgFilePath = ''
+    _selectedFace = None
+
 
 # Get the selected sketch name; otherwise an empty string
 def getSelectedSketchName():
@@ -150,6 +159,12 @@ def getProfilePoints(profile):
                 profileCurves[iCurve].append(endPoint)
 
     # ARGH: The curves returned above are not sorted.  Need to sort them.
+    return sortProfileCurves(profileCurves)
+
+
+# Sort an array of point-arrays (one per curve) so that consecutive curves
+# share endpoints, reversing point order where needed.
+def sortProfileCurves(profileCurves):
     if len(profileCurves) <= 1:
         return profileCurves
 
@@ -177,7 +192,7 @@ def getProfilePoints(profile):
                     profileCurves.pop(iCurve)
                     foundMatch = True
                     break   # Drop out of for loop
-                
+
                 elif lastEndPoint.isEqualTo(curve[len(curve)-1]):
                     # Argh - Need to reverse this curves point order
                     curveReversed = []
@@ -195,8 +210,62 @@ def getProfilePoints(profile):
                 for iCurve in range(len(profileCurves)):
                     sortedProfileCurves.append(profileCurves[iCurve])
                 profileCurves = [] # This will drop out of while loop
-    
+
     return sortedProfileCurves
+
+
+# Sample the points of a single 3D curve (an edge's geometry), stepping ~2mm
+# along non-linear curves.  Returns a list of Point3D in model space.
+def sampleCurve3DPoints(curve3D):
+    pts = []
+    if curve3D.objectType == adsk.core.Line3D.classType():
+        line = adsk.core.Line3D.cast(curve3D)
+        pts.append(line.startPoint)
+        pts.append(line.endPoint)
+    else:
+        evaluator = curve3D.evaluator
+        (retVal, startParam, endParam) = evaluator.getParameterExtents()
+        (retVal, length) = evaluator.getLengthAtParameter(startParam, endParam)
+
+        num_steps = max(1, length / 0.2)   # step every 2mm
+        step = (endParam - startParam) / num_steps
+
+        param = startParam
+        while param < endParam:
+            (result, pt) = evaluator.getPointAtParameter(param)
+            pts.append(pt)
+            param += step
+
+        (retVal, startPoint, endPoint) = evaluator.getEndPoints()
+        pts.append(endPoint)
+    return pts
+
+
+# Returns an array of arrays containing the points for each edge of the face's
+# outer loop, expressed in the given sketch's coordinate space (so they align
+# with where the SVG will be imported).  The curves are ordered so endpoints
+# are equal.
+def getFacePoints(face, sketch):
+
+    outerLoop = None
+    for iLoop in range(face.loops.count):
+        if face.loops.item(iLoop).isOuter:
+            outerLoop = face.loops.item(iLoop)
+            break
+
+    if outerLoop is None:
+        return None
+
+    faceCurves = []
+    edges = outerLoop.edges
+    for iEdge in range(edges.count):
+        edge = edges.item(iEdge)
+        modelPts = sampleCurve3DPoints(edge.geometry)
+        # Convert from model space into the sketch's coordinate space - this is
+        # the same space importSVG uses, so the diagram aligns with the face.
+        faceCurves.append([sketch.modelToSketchSpace(pt) for pt in modelPts])
+
+    return sortProfileCurves(faceCurves)
 
 
 # Compute the bbox of the sampled profile points (matches what the JS editor sees).
@@ -271,16 +340,52 @@ def getSelectedProfile():
     return profile, bbox, name
 
 
+# Get the selected planar face; otherwise None
+def getSelectedFace():
+    if _targetSelectionInput.selectionCount == 1:
+        entity = _targetSelectionInput.selection(0).entity
+        if entity.objectType == adsk.fusion.BRepFace.classType():
+            return entity
+    return None
+
+
+# Create a new sketch on the given planar face.  When projectOutline is True the
+# face's outline is projected into the sketch so the face shape is present as the
+# profile to fill.  Returns the tuple (sketch, points) where points are the
+# outer-loop points in the new sketch's coordinate space (or None if they
+# couldn't be derived).
+def createSketchFromFace(face, projectOutline=True):
+    design = _app.activeProduct
+    rootComp = design.rootComponent
+
+    sketch = rootComp.sketches.add(face)
+    sketch.name = "Voronoi - " + sketch.name
+
+    # Project the face's boundary onto the (coincident) sketch plane so its
+    # shape becomes sketch geometry.  Not all faces project cleanly, so this is
+    # best-effort - the points below come straight from the face geometry.
+    if projectOutline:
+        try:
+            sketch.project(face)
+        except Exception:
+            pass
+
+    points = getFacePoints(face, sketch)
+
+    return sketch, points
+
+
 # HACK: the insert from SVG fixes the curves.  Use this to unfix so that
 # they move when their associated points are moved.
 def setFixedSketchPoints(sketchCurves, flag):
-    try:
-        for iCurve in range(sketchCurves.count):
-            curve = sketchCurves.item(iCurve)
-            curve.isFixed = flag
-    except Exception:
-        if _ui:
-            _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+    for iCurve in range(sketchCurves.count):
+        try:
+            sketchCurves.item(iCurve).isFixed = flag
+        except Exception:
+            # Some curves (e.g. projected reference geometry from a selected
+            # face) may not allow their fixed state to change.  Skip them so
+            # the remaining (imported voronoi) curves are still updated.
+            pass
 
 
 # Send information to the palette. This will trigger an event in the javascript
@@ -308,6 +413,7 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
         try:
             global _app, _units, _widthVoronoi, _heightVoronoi, _profilePoints, _profileOrigin, _profileWidth, _profileHeight, _profileSketchName, _profileSketch, _selectedSketchName, _constructionPlane
             global _widthValueCommandInput, _heightValueCommandInput, _widthProfileStringValueCommandInput, _heightProfileStringValueCommandInput
+            global _selectedFace
 
             des = adsk.fusion.Design.cast(_app.activeProduct)
 
@@ -315,17 +421,49 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
             changedInput = eventArgs.input
 
             if changedInput.id == _SELECTION_INPUT_ID_TARGET:
-                # Either a sketch, a profile, or none selected...
+                # Selection changed - forget any previously selected face.
+                _selectedFace = None
+
+                # Either a sketch, a profile, a face, or none selected...
                 _selectedSketchName = getSelectedSketchName()
                 ( profile, bboxProfile, profileSketchName) = getSelectedProfile()
 
-                _constructionPlaneDropDownInput.isEnabled = (profile is None and _selectedSketchName == '')
+                # Resolve the profile points + their parent sketch from either a
+                # selected profile or, if a face is selected, the face outline.
+                profilePoints = None
+                profileSketch = None
+                profileName = ''
 
-                # If a profile selected, then get dimensions and set in inputs
                 if profile is not None:
-                    _profilePoints = getProfilePoints(profile)
-                    _profileSketchName = profileSketchName
-                    _profileSketch = profile.parentSketch
+                    profilePoints = getProfilePoints(profile)
+                    profileSketch = profile.parentSketch
+                    profileName = profileSketchName
+                elif _selectedSketchName == '':
+                    face = getSelectedFace()
+                    if face is not None:
+                        # Defer creating the real sketch until publish - geometry
+                        # created during inputChanged isn't committed.  Use a
+                        # throwaway sketch only to sample the face outline in the
+                        # exact coordinate space the real sketch will use.
+                        tmpSketch, facePoints = createSketchFromFace(face, projectOutline=False)
+                        try:
+                            tmpSketch.deleteMe()
+                        except Exception:
+                            pass
+                        if facePoints:
+                            _selectedFace = face
+                            profilePoints = facePoints
+                            # profileSketch stays None - it's created at publish time.
+
+                hasProfile = bool(profilePoints)
+
+                _constructionPlaneDropDownInput.isEnabled = (not hasProfile and _selectedSketchName == '')
+
+                # If we have a profile (from a profile or a face), get dimensions and set in inputs
+                if hasProfile:
+                    _profilePoints = profilePoints
+                    _profileSketchName = profileName
+                    _profileSketch = profileSketch
 
                     # Use the bbox of the actual sampled points (what the JS editor uses)
                     # rather than profile.boundingBox, so that placement on import aligns
@@ -333,10 +471,14 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
                     pointsBounds = getProfilePointsBounds(_profilePoints)
                     if pointsBounds is not None:
                         _profileOrigin, widthProfile, heightProfile = pointsBounds
-                    else:
+                    elif bboxProfile is not None:
                         widthProfile = bboxProfile.maxPoint.x - bboxProfile.minPoint.x
                         heightProfile = bboxProfile.maxPoint.y - bboxProfile.minPoint.y
                         _profileOrigin = bboxProfile.minPoint
+                    else:
+                        widthProfile = 0
+                        heightProfile = 0
+                        _profileOrigin = None
 
                     _profileWidth = widthProfile
                     _profileHeight = heightProfile
@@ -352,25 +494,19 @@ class VoronoiCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
                     _profileWidth = 0
                     _profileHeight = 0
 
-                _widthProfileStringValueCommandInput.isVisible = (profile is not None)
-                _heightProfileStringValueCommandInput.isVisible = (profile is not None)
-                _applyProfileSizeBoolValueInput.isVisible = (profile is not None)
+                _widthProfileStringValueCommandInput.isVisible = hasProfile
+                _heightProfileStringValueCommandInput.isVisible = hasProfile
+                _applyProfileSizeBoolValueInput.isVisible = hasProfile
 
             elif changedInput.id == _DROPDOWN_INPUT_ID_CONSTRUCTION_PLANE:
                 _constructionPlane = _constructionPlaneDropDownInput.selectedItem.name
 
             elif changedInput.id == _BOOL_INPUT_ID_APPLY_PROFILE_SIZE:
-                # Copy profile size over to voronoi size (should only be possible if profile selected)
-                ( profile, bboxProfile, profileSketchName) = getSelectedProfile()
-                if profile is not None:
-                    pointsBounds = getProfilePointsBounds(_profilePoints)
-                    if pointsBounds is not None:
-                        _, w, h = pointsBounds
-                        _widthValueCommandInput.value = w
-                        _heightValueCommandInput.value = h
-                    else:
-                        _widthValueCommandInput.value = bboxProfile.maxPoint.x - bboxProfile.minPoint.x
-                        _heightValueCommandInput.value = bboxProfile.maxPoint.y - bboxProfile.minPoint.y
+                # Copy profile size over to voronoi size.  _profileWidth/Height are
+                # set (in cm) whenever a profile or a face is selected.
+                if _profileWidth > 0 or _profileHeight > 0:
+                    _widthValueCommandInput.value = _profileWidth
+                    _heightValueCommandInput.value = _profileHeight
                 else:
                     _widthValueCommandInput.value = 0
                     _heightValueCommandInput.value = 0
@@ -413,7 +549,7 @@ class VoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
             # Create and display the palette.
             palette = _ui.palettes.itemById(_PALETTE_ID)
             if not palette:
-                palette = _ui.palettes.add(_PALETTE_ID, _PALETTE_TITLE, _PALETTE_HTML_FILENAME, True, True, True, 1120, 640, True)
+                palette = _ui.palettes.add(_PALETTE_ID, _PALETTE_TITLE, _PALETTE_HTML_FILENAME, True, True, True, 1120, 940, True)
 
                 # Float the palette.
                 palette.dockingState = adsk.core.PaletteDockingStates.PaletteDockStateFloating
@@ -478,9 +614,10 @@ class VoronoiCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             # Define the inputs.
             cmdInputs_ = cmd.commandInputs
 
-            _targetSelectionInput = cmdInputs_.addSelectionInput(_SELECTION_INPUT_ID_TARGET, 'Sketch or Profile', 'Select a sketch or profile to place the Voronoi')
+            _targetSelectionInput = cmdInputs_.addSelectionInput(_SELECTION_INPUT_ID_TARGET, 'Sketch, Profile, or Face', 'Select a sketch, profile, or planar face to place the Voronoi')
             _targetSelectionInput.addSelectionFilter('Sketches')
             _targetSelectionInput.addSelectionFilter('Profiles')
+            _targetSelectionInput.addSelectionFilter('PlanarFaces')
             _targetSelectionInput.setSelectionLimits(0,1)
 
             _constructionPlaneDropDownInput = cmdInputs_.addDropDownCommandInput(_DROPDOWN_INPUT_ID_CONSTRUCTION_PLANE, 'Construction Plane', adsk.core.DropDownStyles.TextListDropDownStyle)
@@ -643,6 +780,7 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
 
         global _app, _svgFilePath, _selectedSketchName, _selectedSketch, _constructionPlane
         global _profileOrigin, _profileWidth, _profileHeight, _profileSketchName, _profileSketch, _heightVoronoi, _widthVoronoi
+        global _selectedFace
 
         if _svgFilePath == '':
             print("ERROR: Missing the SVG filepath")
@@ -658,7 +796,16 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
             theSketch = _selectedSketch
         elif _profileSketch is not None:
             theSketch = _profileSketch
-        
+        elif _selectedFace is not None:
+            # Create the sketch on the selected face now (deferred from the
+            # dialog) with the face outline projected in as its profile.
+            theSketch, facePoints = createSketchFromFace(_selectedFace)
+            # Recompute the placement origin in the new sketch's coordinate
+            # space so the diagram lands on the face shape.
+            faceBounds = getProfilePointsBounds(facePoints) if facePoints else None
+            if faceBounds is not None:
+                _profileOrigin, _profileWidth, _profileHeight = faceBounds
+
         if theSketch is None:
             # Which plane if no sketch?
             # xYConstructionPlane, xZConstructionPlane, yZConstructionPlane
@@ -676,10 +823,10 @@ class CreateVoronoiCommandExecuteHandler(adsk.core.CommandEventHandler):
         xPos = 0
         yPos = 0
 
-        if _profileSketchName != '' and _profileOrigin is not None:
+        if _profileOrigin is not None:
             xPos = _profileOrigin.x
-            # When inserting into a selected profile, align to the profile's sampled
-            # bounds (the same bounds used by the editor preview), not the dialog size.
+            # When inserting into a profile or face, align to the sampled bounds
+            # (the same bounds used by the editor preview), not the dialog size.
             yPos = _profileOrigin.y + (_profileHeight if _profileHeight > 0 else _heightVoronoi)
             #print("Profile XY Orig = {0},{1}".format(xPos, yPos))
         else:
