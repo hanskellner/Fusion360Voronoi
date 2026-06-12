@@ -1,6 +1,6 @@
 #Author-Hans Kellner
 #Description-This is an Autodesk Fusion 360 addin that's used for generating Voronoi patterns.
-#Copyright (C) 2015-2020 Hans Kellner: https://github.com/hanskellner/Fusion360Voronoi
+#Copyright (C) 2015-2026 Hans Kellner: https://github.com/hanskellner/Fusion360Voronoi
 #MIT License: See https://github.com/hanskellner/Fusion360Voronoi/LICENSE.md
 
 import adsk.core, adsk.fusion, adsk.cam, traceback
