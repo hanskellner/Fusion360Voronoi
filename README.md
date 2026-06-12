@@ -247,8 +247,10 @@ __**WARNING**__
 
 This software makes use of: https://github.com/d3/d3-delaunay
 
-Thanks for suggestions from various folks:
+Thanks for suggestions, fixes, and help from various folks:
 
+- [Vlad](https://github.com/vladm)
+    Has provided several very helpful fixes to the project.
 - [LeonFedotov](https://github.com/LeonFedotov)
     Kindly submitted the original support Lloyd's relaxation algorithm. The support has now been replaced with the version that's part of the D3 code.
 - [wassfila](https://github.com/wassfila)
