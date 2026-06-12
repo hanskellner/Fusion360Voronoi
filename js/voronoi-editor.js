@@ -735,6 +735,72 @@ $(function() {
         }
     }
 
+    // Returns the [x,y] centroid of a paper Path / CompoundPath made of straight
+    // segments, or null if it has no usable area.  For a CompoundPath the largest
+    // child is used (the clipped cell may split into slivers along a concave edge).
+    function polygonCentroidFromPaperPath(item) {
+        if (!item) return null;
+
+        var path = item;
+        if (item.className === 'CompoundPath') {
+            var best = null, bestArea = -Infinity;
+            for (var c = 0; c < item.children.length; c++) {
+                var a = Math.abs(item.children[c].area);
+                if (a > bestArea) { bestArea = a; best = item.children[c]; }
+            }
+            path = best;
+        }
+
+        if (!path || path.segments.length < 3) return null;
+
+        var pts = [];
+        for (var s = 0; s < path.segments.length; s++) {
+            pts.push([path.segments[s].point.x, path.segments[s].point.y]);
+        }
+
+        var centroid = d3.polygonCentroid(pts);
+        if (isNaN(centroid[0]) || isNaN(centroid[1])) return null;
+        return centroid;
+    }
+
+    // Centroid of a Voronoi cell constrained to the profile (clipped Lloyd's
+    // relaxation).  d3 bounds the Voronoi to the profile's rectangular bounding
+    // box, so without this the centroids of boundary cells sit out in the box
+    // corners and relaxation drags sites out of the shape, leaving empty bands
+    // along curved/angled edges.  Interior cells (fully inside the profile) use
+    // the plain polygon centroid; only boundary cells pay for the clip.
+    function constrainedCellCentroid(cell, profilePath) {
+        if (profilePath === null) {
+            return d3.polygonCentroid(cell);
+        }
+
+        var allInside = true;
+        for (var k = 0; k < cell.length - 1; k++) { // last point dups the first
+            if (!profilePath.contains(new paper.Point(cell[k][0], cell[k][1]))) {
+                allInside = false;
+                break;
+            }
+        }
+        if (allInside) {
+            return d3.polygonCentroid(cell);
+        }
+
+        // Boundary cell: clip it to the profile and use the clipped centroid.
+        var cellPath = new paper.Path({ insert: false });
+        for (var k = 0; k < cell.length - 1; k++) {
+            cellPath.add(new paper.Point(cell[k][0], cell[k][1]));
+        }
+        cellPath.closed = true;
+
+        var clipped = profilePath.intersect(cellPath, { insert: false });
+        cellPath.remove();
+
+        var centroid = polygonCentroidFromPaperPath(clipped);
+        if (clipped) clipped.remove();
+
+        return centroid; // null if the clip produced no area
+    }
+
     function cellSitesCount() {
         return _cellSitesRelaxed.length;
     }
@@ -1156,22 +1222,24 @@ $(function() {
 
                 if (isIntersecting) {
 
-                    var paddingDist = 2 + cms2pixels(propertyPagePadding());
-
                     // If cell intersects profile then toss if requested to.
-                    if (propertyClipCellsIntersect() || !_profilePathGap.contains(ptCenter)) {
+                    if (propertyClipCellsIntersect()) {
                         removeCell |= true;
                     }
-                    // Else if cell center is within padding then toss cell
-                    else if (ptCenter.getDistance(_profilePathGap.getNearestLocation(ptCenter).point, true) <= paddingDist) {
+                    // The cell's own site lies outside the usable region, so clipping
+                    // it would leave only a thin sliver hugging the edge — drop it.
+                    else if (!_profilePathGap.contains(ptCenter)) {
                         removeCell |= true;
                     }
+                    // Otherwise clip the cell to the profile so it fills exactly up to
+                    // the edge.  (The padding margin is already baked into the gap path,
+                    // so no extra edge culling is needed here.)
                     else {
                         var newPathMod = _profilePathGap.intersect(newPath);
                         newPath.remove();
                         newPath = newPathMod;
                         setCellPathAttributes(newPath, propertyCellEdgeStyle());
-                        
+
                         // Need to reparent from profile layer back to Voronoi layer
                         newPath.remove();
                         _layerVoronoi.addChild(newPath);
@@ -1340,16 +1408,31 @@ $(function() {
                 if (lloydsCounter() > 0) {
                     setLloydsCounter(lloydsCounter()-1);
 
+                    // Constrain relaxation to the profile (gap path if present) so
+                    // sites distribute within the actual shape instead of drifting
+                    // out toward the rectangular Voronoi bounds.
+                    let profilePathRelax = _profilePathGap !== null ? _profilePathGap : _profilePath;
+
                     // Move the cell sites towards their cell centroids
                     for (var i = 0, l = cellSitesCount(); i < l; i++) {
                         var cell = _voronoi.cellPolygon(i);
                         if (cell == null) continue;
 
                         const [x0,y0] = cellSiteAt(i);
-                        const [x1, y1] = d3.polygonCentroid(cell);
+
+                        var centroid = constrainedCellCentroid(cell, profilePathRelax);
+                        if (centroid == null) continue; // clip produced no area; leave site put
+                        const [x1, y1] = centroid;
 
                         var xNew = x0 + (x1 - x0) * LLOYDS_OMEGA;
                         var yNew = y0 + (y1 - y0) * LLOYDS_OMEGA;
+
+                        // Safety net: never let a site leave the profile.  If the move
+                        // would exit it, keep the site at its (inside) previous spot.
+                        if (profilePathRelax !== null &&
+                            !profilePathRelax.contains(new paper.Point(xNew, yNew))) {
+                            continue;
+                        }
 
                         setCellSiteAt(i, xNew, yNew);
                     }
