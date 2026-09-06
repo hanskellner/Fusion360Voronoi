@@ -6,7 +6,7 @@
 	"description":	{
 		"":	"This is an Autodesk Fusion script that's used for generating voronoi sketches."
 	},
-	"version":	"3.5",
+	"version":	"3.6",
 	"runOnStartup":	false,
 	"supportedOS":	"windows|mac",
 	"editEnabled":	true
