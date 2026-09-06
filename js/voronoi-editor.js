@@ -144,18 +144,46 @@ $(function() {
     }
 
     // For the cell count range
-    const $valueSpanCellCount = $('#cellCountValueSpan');
+    const $inputCellCount = $('#cellCountInput');
     const $valueCellCount = $('#cellCountRange');
-    $valueSpanCellCount.html($valueCellCount.val());
-    $valueCellCount.on('input change', () => {
-        $valueSpanCellCount.html($valueCellCount.val());
+    $inputCellCount.val($valueCellCount.val());
+    $valueCellCount.on('input', () => {
+        $inputCellCount.val($valueCellCount.val());
         generateCells();
         updateView();
     });
 
+    function applyCellCountInput() {
+        let count = parseInt($inputCellCount.val(), 10);
+        if (isNaN(count) || count < 2 || count > 2000) {
+            $inputCellCount.val($valueCellCount.val());
+            return;
+        }
+        const currentMax = parseInt($valueCellCount.attr('max'), 10);
+        if (count > currentMax) {
+            $valueCellCount.attr('max', count);
+        }
+        $valueCellCount.val(count);
+        $inputCellCount.val(count);
+        generateCells();
+        updateView();
+    }
+
+    $inputCellCount.on('change', applyCellCountInput);
+    $inputCellCount.on('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyCellCountInput();
+            $inputCellCount.trigger('blur');
+        } else if (e.key === 'Escape') {
+            $inputCellCount.val($valueCellCount.val());
+            $inputCellCount.trigger('blur');
+        }
+    });
+
     function propertyCellCount(defaultCount = 100) {
-        var count = parseInt($valueCellCount.val());
-        if (count !== NaN && count > 1 && count < 2000) {
+        var count = parseInt($valueCellCount.val(), 10);
+        if (!isNaN(count) && count > 1 && count <= 2000) {
             return count;
         }
         else {
@@ -164,11 +192,49 @@ $(function() {
     }
 
     // For the cell gap
-    const $valueSpanCellGap = $('#cellGapValueSpan');
+    const $inputCellGap = $('#cellGapInput');
     const $valueCellGap = $('#cellGapRange');
-    $valueCellGap.on('input change', () => {
-        $valueSpanCellGap.html($valueCellGap.val());
+    $inputCellGap.val($valueCellGap.val());
+
+    $valueCellGap.on('input', () => {
+        $inputCellGap.val($valueCellGap.val());
         updateView();
+    });
+
+    function applyCellGapInput() {
+        const val = parseFloat($inputCellGap.val());
+        if (isNaN(val) || val < 0) {
+            $inputCellGap.val($valueCellGap.val());
+            return;
+        }
+
+        const minVal = parseFloat(formatCellGapMin(_units));
+        const cleanVal = Math.max(val, minVal);
+
+        const currentMax = parseFloat($valueCellGap.attr('max'));
+        if (cleanVal > currentMax) {
+            $valueCellGap.attr('max', cleanVal);
+        }
+        const currentMin = parseFloat($valueCellGap.attr('min'));
+        if (cleanVal < currentMin) {
+            $valueCellGap.attr('min', cleanVal);
+        }
+
+        $valueCellGap.val(cleanVal);
+        $inputCellGap.val(cleanVal);
+        updateView();
+    }
+
+    $inputCellGap.on('change', applyCellGapInput);
+    $inputCellGap.on('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyCellGapInput();
+            $inputCellGap.trigger('blur');
+        } else if (e.key === 'Escape') {
+            $inputCellGap.val($valueCellGap.val());
+            $inputCellGap.trigger('blur');
+        }
     });
 
     function propertyCellGap(defaultGap = 0.1) {
@@ -185,17 +251,51 @@ $(function() {
     }
 
     // For the cell shape scale range
-    const $valueSpanCellScale = $('#cellScaleValueSpan');
+    const $inputCellScale = $('#cellScaleInput');
     const $valueCellScale = $('#cellScaleRange');
-    $valueSpanCellScale.html($valueCellScale.val());
-    $valueCellScale.on('input change', () => {
-        $valueSpanCellScale.html($valueCellScale.val());
+    $inputCellScale.val($valueCellScale.val());
+    $valueCellScale.on('input', () => {
+        $inputCellScale.val($valueCellScale.val());
         updateView();
     });
 
+    function applyCellScaleInput() {
+        let pct = parseInt($inputCellScale.val(), 10);
+        if (isNaN(pct) || pct < 1 || pct > 500) {
+            $inputCellScale.val($valueCellScale.val());
+            return;
+        }
+        const currentMax = parseInt($valueCellScale.attr('max'), 10);
+        if (pct > currentMax) {
+            $valueCellScale.attr('max', pct);
+        }
+        const currentMin = parseInt($valueCellScale.attr('min'), 10);
+        if (pct < currentMin) {
+            $valueCellScale.attr('min', pct);
+        }
+        $valueCellScale.val(pct);
+        $inputCellScale.val(pct);
+        updateView();
+    }
+
+    $inputCellScale.on('change', applyCellScaleInput);
+    $inputCellScale.on('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyCellScaleInput();
+            $inputCellScale.trigger('blur');
+        } else if (e.key === 'Escape') {
+            $inputCellScale.val($valueCellScale.val());
+            $inputCellScale.trigger('blur');
+        }
+    });
+
     function propertyCellScale(defaultPct = 1.0) {
-        var pct = parseInt($valueCellScale.val());
-        return (pct !== NaN) ? pct / 100 : defaultPct;
+        var pct = parseInt($valueCellScale.val(), 10);
+        if (!isNaN(pct)) {
+            return pct / 100;
+        }
+        return defaultPct;
     }    
 
     // For the cell edge style
@@ -256,7 +356,7 @@ $(function() {
     var _padding = 0;
 
     const $valuePagePadding = $('#pagePaddingInput');
-    $valuePagePadding.on('input change', () => {
+    $valuePagePadding.on('change', () => {
         var newVal = propertyPagePadding();
         
         // Make sure padding isn't too large
@@ -277,6 +377,7 @@ $(function() {
     
         if (newVal !== _padding) {
             _padding = newVal;
+            setPropertyPagePadding(_padding);
             forceUpdate();
         }
         else {
@@ -284,9 +385,20 @@ $(function() {
         }
     });
 
+    $valuePagePadding.on('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            $valuePagePadding.trigger('change');
+            $valuePagePadding.trigger('blur');
+        } else if (e.key === 'Escape') {
+            setPropertyPagePadding(_padding);
+            $valuePagePadding.trigger('blur');
+        }
+    });
+
     // Return the page padding (in CMs).
     function propertyPagePadding() {
-        var val = Number($valuePagePadding.val());
+        var val = parseFloat($valuePagePadding.val());
         if (isNaN(val) || val < 0) {
             return _padding; // Incoming is invalid so use current value
         }
@@ -312,17 +424,24 @@ $(function() {
             case 'mm': formVal = cms2mm(val); break;
             default:   formVal = val; break; // cm
         }
-        $valuePagePadding.val(Number(formVal.toFixed(3)));
+        let precision = 3;
+        if (_units === 'mm') {
+            precision = 2;
+        } else if (_units === 'ft') {
+            precision = 4;
+        }
+        $valuePagePadding.val(Number(formVal.toFixed(precision)));
     }
 
     // Number of iterations for Lloyd's Relaxation
     var _lloydsRelaxation = 0;
 
-    const $valueSpanLloyds = $('#lloydsValueSpan');
+    const $inputLloyds = $('#lloydsInput');
     const $valueLloyds = $('#lloydsRange');
-    $valueSpanLloyds.html($valueLloyds.val());
-    $valueLloyds.on('input change', () => {
-        $valueSpanLloyds.html($valueLloyds.val());
+    $inputLloyds.val($valueLloyds.val());
+
+    $valueLloyds.on('input', () => {
+        $inputLloyds.val($valueLloyds.val());
 
         var newVal = Number($valueLloyds.val());
         if (newVal !== _lloydsRelaxation) {
@@ -338,6 +457,34 @@ $(function() {
         }
     });
 
+    function applyLloydsInput() {
+        let val = parseInt($inputLloyds.val(), 10);
+        if (isNaN(val) || val < 0 || val > 1000) {
+            $inputLloyds.val($valueLloyds.val());
+            return;
+        }
+        $valueLloyds.val(val);
+        $inputLloyds.val(val);
+        if (val !== _lloydsRelaxation) {
+            _lloydsRelaxation = val;
+            setLloydsCounter(_lloydsRelaxation);
+            initRelaxedCellSites();
+            updateView();
+        }
+    }
+
+    $inputLloyds.on('change', applyLloydsInput);
+    $inputLloyds.on('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyLloydsInput();
+            $inputLloyds.trigger('blur');
+        } else if (e.key === 'Escape') {
+            $inputLloyds.val($valueLloyds.val());
+            $inputLloyds.trigger('blur');
+        }
+    });
+
     // Return the number of iterations for Lloyd's Relaxation
     function propertyLloyds() {
         return _lloydsRelaxation;
@@ -347,7 +494,7 @@ $(function() {
     function setPropertyLloyds(val) {
         _lloydsRelaxation = val;
         $valueLloyds.val(val);
-        $valueSpanLloyds.html(val);
+        $inputLloyds.val(val);
 
         setLloydsCounter(_lloydsRelaxation);
 
@@ -382,7 +529,7 @@ $(function() {
         }
         $valueCellGap.attr({min: formatCellGapMin(_units), max: config.max, step: config.step});
         $valueCellGap.val(config.defaultVal);
-        $valueSpanCellGap.html(config.defaultVal);
+        $inputCellGap.val(config.defaultVal);
     }
 
     // Units
@@ -488,27 +635,56 @@ $(function() {
     }
 
     // For the view scale range
-    const $valueSpanViewScale = $('#viewScaleValueSpan');
+    const $inputViewScale = $('#viewScaleInput');
     const $valueViewScale = $('#viewScaleRange');
-    $valueSpanViewScale.html($valueViewScale.val());
-    $valueViewScale.on('input change', () => {
-        $valueSpanViewScale.html($valueViewScale.val());
+    $inputViewScale.val($valueViewScale.val());
+
+    $valueViewScale.on('input', () => {
+        $inputViewScale.val($valueViewScale.val());
         scaleView(propertyViewScale());
-        //console.log("setSpanViewScale = " + $valueViewScale.val());
+    });
+
+    function applyViewScaleInput() {
+        let val = parseInt($inputViewScale.val(), 10);
+        if (isNaN(val) || val < 1 || val > 500) {
+            $inputViewScale.val($valueViewScale.val());
+            return;
+        }
+        const currentMax = parseInt($valueViewScale.attr('max'), 10);
+        if (val > currentMax) {
+            $valueViewScale.attr('max', val);
+        }
+        $valueViewScale.val(val);
+        $inputViewScale.val(val);
+        scaleView(propertyViewScale());
+    }
+
+    $inputViewScale.on('change', applyViewScaleInput);
+    $inputViewScale.on('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyViewScaleInput();
+            $inputViewScale.trigger('blur');
+        } else if (e.key === 'Escape') {
+            $inputViewScale.val($valueViewScale.val());
+            $inputViewScale.trigger('blur');
+        }
     });
 
     function propertyViewScale(defaultScale = 1) {
-        var val = parseInt($valueViewScale.val());
-        return (val !== NaN && val !== 0) ? val/100 : defaultScale;
+        var val = parseInt($valueViewScale.val(), 10);
+        if (!isNaN(val) && val !== 0) {
+            return val / 100;
+        }
+        return defaultScale;
     }
 
     function setPropertyViewScale(newScale) {
-        if (newScale !== NaN) {
+        if (!isNaN(newScale)) {
             newScale = newScale * 100;
-            if (newScale >= 1 && newScale <= 200) {
+            if (newScale >= 1 && newScale <= 500) {
                 $valueViewScale.val(newScale);
-                $valueSpanViewScale.html($valueViewScale.val());
-                //console.log("setPropertyViewScale = " + newScale/100);
+                $inputViewScale.val(newScale);
             }
         }
     }
@@ -538,11 +714,15 @@ $(function() {
         var cellStyle = propertyCellEdgeStyle();
         var isShape = (cellStyle != CellEdgeStyle.Curved && cellStyle != CellEdgeStyle.Straight);
         $valueCellGap.prop( "disabled", isShape );
+        $inputCellGap.prop( "disabled", isShape );
         $valueCellScale.prop( "disabled", !isShape );
+        $inputCellScale.prop( "disabled", !isShape );
 
         $valueCellEdgeStyle.prop( "disabled", isEnabled );
         $valueCellCount.prop( "disabled", isEnabled );
+        $inputCellCount.prop( "disabled", isEnabled );
         $valueLloyds.prop( "disabled", isEnabled );
+        $inputLloyds.prop( "disabled", isEnabled );
         $valuePagePadding.prop( "disabled", isEnabled );
     }
 
@@ -552,7 +732,9 @@ $(function() {
         var cellStyle = propertyCellEdgeStyle();
         var isShape = (cellStyle != CellEdgeStyle.Curved && cellStyle != CellEdgeStyle.Straight);
         $valueCellGap.prop( "disabled", isShape );
+        $inputCellGap.prop( "disabled", isShape );
         $valueCellScale.prop( "disabled", !isShape );
+        $inputCellScale.prop( "disabled", !isShape );
 
         updateView();
     }
